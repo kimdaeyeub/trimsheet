@@ -997,7 +997,7 @@ export const SCAN_POLICY = {
 - [x] **5.3** `crawl/generic.ts` `findPdfLinks(url)`: `a[href]` 중 `.pdf` 또는 `가격표|카탈로그|가격|price|catalog` 텍스트, `application/pdf` 네트워크 응답, "가격표" 버튼 최대 3개 클릭 후 새 링크/다운로드 이벤트 → `{ url, label, guessKind }[]`(중복 제거). "지난 가격표/이전 가격표/아카이브" 문구가 붙은 링크는 제외.
 - [x] **5.4** 후보마다 `identity.ts`로 연식 파싱 → 계열별 최신 연식만 남김(§7.11) → 남은 후보에 L1(URL 지문) 적용.
 - [x] **5.5** 도구 `find_pdfs_on_page` + 시스템 프롬프트 갱신(가격표 후보 1개면 바로 `register_pdf_url`, 여러 개면 사용자 선택 → `PdfCandidatesCard`).
-- [ ] **5.6** 실패 처리: `{ candidates: [], failure: '링크 없음' | '사이트 구조 변경 의심' | '접속 실패' }` → "PDF를 직접 올려 달라" 안내.
+- [x] **5.6** 실패 처리: `{ candidates: [], failure: '링크 없음' | '사이트 구조 변경 의심' | '접속 실패' }` → "PDF를 직접 올려 달라" 안내.
 - [x] **5.7** 현대/기아/제네시스 차종 페이지 각 1개 수동 테스트 → `docs/site-notes.md`(URL 패턴, PDF 링크 위치, 클릭 필요 여부, **연식 표기 위치**, 이전 연식 가격표가 같은 페이지에 노출되는지).
 
 **완료 조건**: 차종 페이지 URL을 채팅에 붙여 넣으면 최신 연식 가격표만 수집되어 시트까지 반영되고, 이미 처리한 차종이면 건너뜀.
