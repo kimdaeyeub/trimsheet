@@ -1,6 +1,7 @@
 import { defineTool } from '@flue/runtime';
 import * as v from 'valibot';
-import { MAX_PDF_BYTES, looksLikePdf, pdfPageCount } from '../pipeline/pdf-info.ts';
+import { downloadPdf, probe, unchanged } from '../crawl/fetch-pdf.ts';
+import { pdfPageCount } from '../pipeline/pdf-info.ts';
 import { AppError } from '../shared/errors.ts';
 import { sha256Hex, sourceIdFromSha } from '../shared/ids.ts';
 import { keys, putPdf } from '../store/r2.ts';
@@ -26,7 +27,7 @@ export function checkUrl(raw: string): URL {
 export const registerPdfUrl = defineTool({
 	name: 'register_pdf_url',
 	description:
-		'가격표 PDF의 직접 링크(https, hyundai.com/kia.com/genesis.com)를 내려받아 등록합니다. 이미 받은 파일이면 다시 받지 않습니다. 결과의 nextStep을 이어서 호출하세요.',
+		'가격표 PDF 링크(https, hyundai.com/kia.com/genesis.com — find_pdfs_on_page가 준 URL 포함)를 내려받아 등록합니다. 이미 받은 파일이면 다시 받지 않습니다. 결과의 nextStep을 이어서 호출하세요.',
 	input: v.object({ url: v.pipe(v.string(), v.url()), conversationId: v.optional(v.string()) }),
 	durable: true,
 	timeoutMs: 60_000,
@@ -37,12 +38,8 @@ export const registerPdfUrl = defineTool({
 		// L1: same URL with unchanged ETag/Last-Modified → no download.
 		const known = await repo.findPdfSourceByUrl(url);
 		if (known) {
-			const head = await step.do('head', async () => {
-				const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal });
-				return { etag: res.headers.get('etag') ?? '', lastModified: res.headers.get('last-modified') ?? '' };
-			});
-			const unchanged = (head.etag && head.etag === known.etag) || (head.lastModified && head.lastModified === known.lastModified);
-			if (unchanged) {
+			const probed = await step.do('head', () => probe(url, signal));
+			if (unchanged(known, probed)) {
 				log.info('같은 URL, 변경 없음 — 다운로드 생략');
 				return {
 					output: {
@@ -56,26 +53,12 @@ export const registerPdfUrl = defineTool({
 		}
 
 		const saved = await step.do('download', async () => {
-			const res = await fetch(url, { redirect: 'follow', signal });
-			if (!res.ok) throw new AppError('download_failed', `다운로드 실패 (HTTP ${res.status})`);
-			const declared = Number(res.headers.get('content-length') ?? 0);
-			if (declared > MAX_PDF_BYTES) throw new AppError('too_large', 'PDF가 50MB를 넘습니다.');
-			const bytes = await res.arrayBuffer();
-			if (bytes.byteLength > MAX_PDF_BYTES) throw new AppError('too_large', 'PDF가 50MB를 넘습니다.');
-			if (!looksLikePdf(bytes)) throw new AppError('not_pdf', '링크의 파일이 PDF가 아닙니다.');
-			const pageCount = await pdfPageCount(bytes);
+			const dl = await downloadPdf({ url }, signal);
+			const pageCount = await pdfPageCount(dl.bytes);
 			if (pageCount === null) throw new AppError('broken_pdf', 'PDF를 열 수 없습니다.');
-			const sha256 = await sha256Hex(bytes);
-			const filename = decodeURIComponent(new URL(res.url || url).pathname.split('/').pop() || 'price.pdf');
-			await putPdf(bucket, sha256, bytes, { filename, origin: 'url', sourceUrl: url });
-			return {
-				sha256,
-				filename,
-				pageCount,
-				sizeBytes: bytes.byteLength,
-				etag: res.headers.get('etag') ?? '',
-				lastModified: res.headers.get('last-modified') ?? '',
-			};
+			const sha256 = await sha256Hex(dl.bytes);
+			await putPdf(bucket, sha256, dl.bytes, { filename: dl.filename, origin: 'url', sourceUrl: url });
+			return { sha256, filename: dl.filename, pageCount, sizeBytes: dl.bytes.byteLength, etag: dl.etag, lastModified: dl.lastModified };
 		});
 
 		const sourceId = sourceIdFromSha(saved.sha256);

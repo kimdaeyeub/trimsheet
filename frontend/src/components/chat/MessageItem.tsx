@@ -3,6 +3,7 @@ import { ChevronRight, FileText } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { stripTokens } from '../../lib/format'
 import { Markdown } from './Markdown'
+import { PdfCandidatesCard } from './tool-cards/PdfCandidatesCard'
 import { ExtractPassCard, FinalizeJobCard, GenericToolCard, PrepareSourceCard, RegisterPdfCard } from './tool-cards/ToolCards'
 import type { ToolPart } from './tool-cards/shared'
 
@@ -19,8 +20,10 @@ function toolPart(p: DynamicTool): ToolPart {
   }
 }
 
-function ToolCard({ part, onForce }: { part: ToolPart; onForce?: () => void }) {
+function ToolCard({ part, onForce, onSend }: { part: ToolPart; onForce?: () => void; onSend?: (text: string) => void }) {
   switch (part.toolName) {
+    case 'find_pdfs_on_page':
+      return <PdfCandidatesCard part={part} onSend={onSend} />
     case 'register_pdf_url':
       return <RegisterPdfCard part={part} />
     case 'prepare_source':
@@ -50,7 +53,7 @@ function UserBubble({ text }: { text: string }) {
   )
 }
 
-export function MessageItem({ message, onForce }: { message: FlueConversationMessage; onForce?: () => void }) {
+export function MessageItem({ message, onForce, onSend }: { message: FlueConversationMessage; onForce?: () => void; onSend?: (text: string) => void }) {
   if (message.role === 'user') {
     const text = message.parts.map((p) => (p.type === 'text' ? p.text : '')).join('')
     return <UserBubble text={text} />
@@ -75,7 +78,7 @@ export function MessageItem({ message, onForce }: { message: FlueConversationMes
             </details>
           ) : null
         }
-        if (part.type === 'dynamic-tool') return <ToolCard key={part.toolCallId} part={toolPart(part)} onForce={onForce} />
+        if (part.type === 'dynamic-tool') return <ToolCard key={part.toolCallId} part={toolPart(part)} onForce={onForce} onSend={onSend} />
         if (part.type === 'file') {
           return (
             <a key={i} href={part.url} target="_blank" rel="noreferrer" className="my-1 inline-flex items-center gap-2 text-sm text-primary-600 underline">

@@ -84,7 +84,7 @@ export function ChatPage() {
             </EmptyState>
           )}
           {visible.map((m) => (
-            <MessageItem key={m.id} message={m} onForce={busy ? undefined : force} />
+            <MessageItem key={m.id} message={m} onForce={busy ? undefined : force} onSend={busy ? undefined : (t) => void send(t, null)} />
           ))}
           {agent.status === 'submitted' && (
             <div className="flex items-center gap-2 text-sm text-gray-500">
