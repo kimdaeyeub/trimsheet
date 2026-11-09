@@ -1,0 +1,16 @@
+/**
+ * Wrangler configuration: https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "trimsheet-frontend",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-11-08",
+	"assets": {
+		"not_found_handling": "single-page-application"
+	},
+	"observability": { "enabled": true, "traces": { "enabled": true } },
+	"upload_source_maps": true,
+	// /api/* is proxied to the backend Worker over this service binding (no public hop, no CORS).
+	"services": [{ "binding": "BACKEND", "service": "trimsheet-backend" }]
+}

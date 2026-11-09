@@ -1,0 +1,25 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "trimsheet-backend",
+	"compatibility_date": "2026-11-08",
+	"compatibility_flags": ["nodejs_compat"],
+	// Workers Logs + Traces. Flue adds agent-level spans to each trace:
+	// https://flueframework.com/docs/guide/observability/#cloudflare
+	"observability": { "enabled": true, "traces": { "enabled": true } },
+	// Workers AI — Flue routes `cloudflare/@cf/...` models through this binding.
+	"ai": { "binding": "AI", "remote": true },
+	// PDFs, job state, locks, intermediate extraction results.
+	"r2_buckets": [{ "binding": "FILES", "bucket_name": "trimsheet-files" }],
+	// Browser Run for crawling manufacturer pages (used from Phase 5).
+	"browser": { "binding": "BROWSER" },
+	// Weekly scan: Monday 00:00 UTC = 09:00 KST (used from Phase 6).
+	"triggers": { "crons": ["0 0 * * 1"] },
+	// Not a secret. Filled in after Google Sheets setup (docs/google-sheets-setup.md).
+	// Secrets (OPENAI_API_KEY, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY)
+	// live in .env locally and `wrangler secret put` in production.
+	"vars": { "GOOGLE_SPREADSHEET_ID": "" },
+	// Every agent generates a Durable Object class named after its identity
+	// (TrimSheet -> FlueTrimSheetAgent). Append a new tag when you add an agent:
+	// https://flueframework.com/docs/guide/cloudflare-target/#managing-migrations
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["FlueTrimSheetAgent"] }]
+}
