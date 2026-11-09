@@ -1,5 +1,5 @@
 // End-to-end tool flow with a fake model and fake bindings — no Cloudflare or AI calls.
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as v from 'valibot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FakeR2, asBucket } from './helpers/fake-r2.ts';
@@ -27,6 +27,8 @@ async function priceSheetPdf(year = '2027', date = '2026.11.01'): Promise<ArrayB
 	page(['Trim | Price', 'Cargo 3 41,250,000', 'Cargo 5 42,100,000', 'Lounge 50,000,000', 'Tourer 45,300,000']);
 	page(['Options', 'SmartSense 900,000', 'BuiltinCam 450,000', '* SmartSense and BuiltinCam cannot be combined']);
 	page(['Exterior color', 'Creamy White WW2']);
+	// A vector colour swatch right next to the colour name (PLAN.md Phase 7).
+	doc.getPage(3).drawRectangle({ x: 200, y: 334, width: 24, height: 16, color: rgb(237 / 255, 235 / 255, 228 / 255) });
 	return (await doc.save()).slice().buffer;
 }
 
@@ -122,6 +124,9 @@ describe('tool flow (fake model)', () => {
 		expect(fin!.output.reviewCount).toBe(0); // both passes agree and every quote is on its page
 
 		const repo = getRepo(fakeEnv as never);
+		const { items, review } = await repo.getJobItems(prep.output.jobId);
+		expect(items.color[0]).toMatchObject({ name: 'Creamy White', hex: '#EDEBE4', hexSource: 'PDF 칩', status: '자동 확정' });
+		expect(review).toEqual([expect.objectContaining({ itemId: `hexsum_${prep.output.jobId}`, label: '헥사코드 근사값 1개', progress: '대기' })]);
 		const [vehicle] = await repo.listVehicles();
 		expect(vehicle).toMatchObject({ vehicleKey: 'hyundai|staria electric|2027', status: '처리 완료', effectiveDate: '2026-11-01' });
 		expect((await repo.getJob(prep.output.jobId))).toMatchObject({ stage: 'finalized', outcome: 'ok', trimCount: '2', modelA: MODELS.extract, modelB: MODELS.extract });

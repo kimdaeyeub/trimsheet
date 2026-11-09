@@ -27,6 +27,8 @@ export const Color = v.object({
 	name: v.string(),
 	code: v.nullable(v.string()),
 	hex: v.nullable(v.string()),
+	/** Where the hex came from — set by the app, not the model: 'pdf' chip, 'model' estimate, 'user' edit. */
+	hexSource: v.optional(v.picklist(['pdf', 'model', 'user'])),
 	/** ["*"] means every trim. */
 	applicableTrims: v.array(v.string()),
 	evidence: Evidence,

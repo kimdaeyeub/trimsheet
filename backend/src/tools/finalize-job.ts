@@ -1,6 +1,7 @@
 import { defineTool } from '@flue/runtime';
 import * as v from 'valibot';
 import { pageLookup } from '../pipeline/evidence.ts';
+import { enrichHexes } from '../pipeline/hex.ts';
 import { reconcile } from '../pipeline/reconcile.ts';
 import type { Extraction } from '../pipeline/schema.ts';
 import { BRAND_LABEL } from '../sheets/layout.ts';
@@ -8,7 +9,8 @@ import { writeJobResult } from '../sheets/result.ts';
 import { PIPELINE } from '../shared/config.ts';
 import { AppError } from '../shared/errors.ts';
 import { newId } from '../shared/ids.ts';
-import { getJson, keys, putJson, releaseVehicleLock } from '../store/r2.ts';
+import { log as jlog } from '../shared/log.ts';
+import { getJson, getPdfBytes, keys, putJson, releaseVehicleLock } from '../store/r2.ts';
 import { deps, jobUrl, loadState, requireStage, updateState } from './common.ts';
 import { isFallbackModel } from './extract-pass.ts';
 
@@ -46,6 +48,20 @@ export const finalizeJob = defineTool({
 		const b = state.stage === 'pass_b_done' ? await getJson<Extraction>(bucket, keys.jobFile(jobId, 'pass-b.json')) : null;
 		const raw = await getJson<Pages>(bucket, keys.jobFile(jobId, 'pages.json'));
 		if (!a || !raw) throw new AppError('missing_pass', '1차 추출 결과가 없습니다. extract_pass를 먼저 실행하세요.');
+
+		// Approximate hexes from the PDF's colour chips (PLAN.md Phase 7). Never fails the job.
+		if (a.colors.length) {
+			log.info('색상 칩에서 헥사코드 추출 중');
+			try {
+				const bytes = await getPdfBytes(bucket, state.sha256);
+				if (bytes) {
+					const hex = await enrichHexes(bytes, b ? [a, b] : [a], state.pageMap?.color ?? []);
+					jlog('info', 'hex_enriched', { jobId, ...hex, colors: a.colors.length });
+				}
+			} catch (err) {
+				jlog('warn', 'hex_failed', { jobId, message: err instanceof Error ? err.message : String(err) });
+			}
+		}
 
 		log.info('검증·판정 중');
 		const result = reconcile(a, b, {

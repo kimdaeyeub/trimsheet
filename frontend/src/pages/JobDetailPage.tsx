@@ -125,7 +125,9 @@ export function JobDetailPage() {
     const reviewRow = review.find((x) => x.itemId === r.itemId)
     setEditing({ ...found, itemId: r.itemId, passA: reviewRow?.passA, passB: reviewRow?.passB, reasons: reviewRow?.reasons })
   }
-  const statusOf = (r: Row) => (tab === 'review' ? findItem(r.itemId)?.values.status : r.status) ?? ''
+  const isHexSummary = (r: Row) => r.itemId?.startsWith('hexsum_')
+  const statusOf = (r: Row) =>
+    (isHexSummary(r) ? (r.progress === '완료' ? '승인' : '확인 필요') : tab === 'review' ? findItem(r.itemId)?.values.status : r.status) ?? ''
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-6 lg:h-full lg:flex-row">
@@ -221,6 +223,7 @@ export function JobDetailPage() {
                         {c.key === 'hex' && r.hex ? (
                           <span className="inline-flex items-center gap-1.5">
                             <span className="size-4 rounded border border-gray-200" style={{ backgroundColor: r.hex }} aria-hidden /> {r.hex}
+                            {r.hexSource && <span className="text-xs text-gray-400">{r.hexSource}</span>}
                           </span>
                         ) : c.render ? (
                           c.render(r)
@@ -252,12 +255,16 @@ export function JobDetailPage() {
                           <IconButton label="승인" className="size-8 hover:text-success-700" disabled={busy || statusOf(r) === '승인'} onClick={() => act.mutate({ itemId: r.itemId, body: { action: 'approve' } })}>
                             <Check className="size-4" />
                           </IconButton>
-                          <IconButton label="수정" className="size-8 hover:text-primary-600" disabled={busy} onClick={() => openEdit(r)}>
-                            <Pencil className="size-4" />
-                          </IconButton>
-                          <IconButton label="제외" className="size-8 hover:text-danger-700" disabled={busy || statusOf(r) === '제외'} onClick={() => act.mutate({ itemId: r.itemId, body: { action: 'reject' } })}>
-                            <X className="size-4" />
-                          </IconButton>
+                          {!isHexSummary(r) && (
+                            <>
+                              <IconButton label="수정" className="size-8 hover:text-primary-600" disabled={busy} onClick={() => openEdit(r)}>
+                                <Pencil className="size-4" />
+                              </IconButton>
+                              <IconButton label="제외" className="size-8 hover:text-danger-700" disabled={busy || statusOf(r) === '제외'} onClick={() => act.mutate({ itemId: r.itemId, body: { action: 'reject' } })}>
+                                <X className="size-4" />
+                              </IconButton>
+                            </>
+                          )}
                         </span>
                       )}
                     </td>

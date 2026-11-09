@@ -68,6 +68,16 @@ describe('review actions', () => {
 		expect((await patch(env, `/jobs/job_1/items/${items.rule[0].itemId}`, { action: 'delete' })).status).toBe(400);
 	});
 
+	it('closes the approximate-hex summary row on approve only', async () => {
+		const { env } = makeEnv();
+		const a = sampleExtraction();
+		a.colors[0].hex = '#EDEBE4';
+		await writeJobResult(getRepo(env), { jobId: 'job_h', brand: 'hyundai', vehicleName: '스타리아', modelYear: '2027' }, reconcile(a, null, { pageCount: 4, pages: pageLookup(PAGES), scanned: false }));
+		expect((await patch(env, '/jobs/job_h/items/hexsum_job_h', { action: 'reject' })).status).toBe(400);
+		expect((await patch(env, '/jobs/job_h/items/hexsum_job_h', { action: 'approve' })).status).toBe(200);
+		expect((await getRepo(env).getJobItems('job_h')).review[0].progress).toBe('완료');
+	});
+
 	it('approves every auto-confirmed item at once', async () => {
 		const { env } = makeEnv();
 		await seed(env);

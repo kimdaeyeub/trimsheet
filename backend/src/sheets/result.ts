@@ -11,12 +11,17 @@ import type { Cell, SheetsPort } from './port.ts';
 import type { SheetsRepo } from './repo.ts';
 import { toCells, toRecords } from './rows.ts';
 
+/** Item id of the per-job "check approximate hexes" review row. */
+export const hexSummaryId = (jobId: string) => `hexsum_${jobId}`;
+
 export interface JobVehicle {
 	jobId: string;
 	brand: Brand | null;
 	vehicleName: string;
 	modelYear: string;
 }
+
+export const HEX_SOURCE_LABEL = { pdf: 'PDF 칩', model: 'OpenAI 추정', user: '사용자 수정' } as const;
 
 const ITEM_TAB: Record<SheetName, TabSpec> = { trim: TABS.trim, color: TABS.color, option: TABS.option, rule: TABS.rule };
 
@@ -48,7 +53,7 @@ function itemCells(it: ReconciledItem, head: Record<string, Cell>): Record<strin
 				code: c.code ?? '',
 				hex: c.hex ?? '',
 				preview: '',
-				hexSource: c.hex ? 'OpenAI 추정' : '',
+				hexSource: c.hex ? HEX_SOURCE_LABEL[c.hexSource ?? 'model'] : '',
 				applicableTrims: c.applicableTrims.includes('*') ? '전 트림' : c.applicableTrims.join(', '),
 			};
 		}
@@ -146,6 +151,26 @@ export async function writeJobResult(repo: SheetsRepo, vehicle: JobVehicle, resu
 			}),
 		),
 	);
+
+	// One summary row asking the reviewer to eyeball the approximate hexes (PLAN.md §7.10).
+	const hexCount = result.items.filter((i) => i.sheet === 'color' && (i.final as ColorItem).hex).length;
+	if (hexCount > 0) {
+		await port.append(TABS.review.title, [
+			toCells(TABS.review, {
+				itemId: hexSummaryId(vehicle.jobId),
+				jobId: vehicle.jobId,
+				vehicleName: vehicle.vehicleName,
+				sheet: SHEET_LABEL.color,
+				label: `헥사코드 근사값 ${hexCount}개`,
+				reasons: '헥사코드 근사값 — 색상 탭의 미리보기를 PDF 색상과 비교해 주세요',
+				passA: '',
+				passB: '',
+				evidencePage: '',
+				evidenceQuote: '',
+				progress: '대기',
+			}),
+		]);
+	}
 
 	// 3. Paint colour previews (needs the row numbers the append produced).
 	const hexItems = result.items.filter((i) => i.sheet === 'color' && (i.final as ColorItem).hex);

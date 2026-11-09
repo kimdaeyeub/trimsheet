@@ -6,6 +6,7 @@ import { kstNow } from '../shared/time.ts';
 import { COLOR_KIND_LABEL, RULE_TYPE_LABEL, TABS, type TabSpec } from './layout.ts';
 import type { Cell } from './port.ts';
 import type { SheetsRepo } from './repo.ts';
+import { hexSummaryId } from './result.ts';
 import { toCells, toRecords, type SheetRecord } from './rows.ts';
 
 const ITEM_TABS: Record<SheetName, TabSpec> = { trim: TABS.trim, color: TABS.color, option: TABS.option, rule: TABS.rule };
@@ -69,6 +70,13 @@ export async function applyItemAction(
 	itemId: string,
 	input: ItemAction,
 ): Promise<ItemActionResponse> {
+	// The "approximate hexes" summary row has no data row behind it: approving just closes it.
+	if (itemId === hexSummaryId(jobId)) {
+		if (input.action !== 'approve') throw new AppError('invalid_input', '헥사코드 확인 행은 승인만 할 수 있습니다. 개별 색상은 색상 탭에서 수정하세요.');
+		await repo.ensureLayout();
+		await closeReviewRow(repo, [itemId]);
+		return { itemId, sheet: 'color', status: '승인', values: {} };
+	}
 	const { sheet, spec, rec } = await findItem(repo, jobId, itemId);
 	const patch: Record<string, Cell> = { updatedAt: kstNow() };
 
