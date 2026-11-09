@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ExternalLink, FileText } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Check, CheckCheck, CircleCheck, ExternalLink, FileText, Pencil, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
-import type { SheetName } from '@shared/types'
+import type { ItemAction, SheetName } from '@shared/types'
+import { EditItemDialog, type EditTarget } from '../components/review/EditItemDialog'
 import { Badge, type Tone } from '../components/ui/Badge'
+import { Button, IconButton } from '../components/ui/Button'
 import { buttonClass } from '../components/ui/button-styles'
 import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -66,6 +68,24 @@ export function JobDetailPage() {
   const [tab, setTab] = useState<TabKey>('review')
   const [page, setPage] = useState<number | null>(null)
   const job = useQuery({ queryKey: qk.job(jobId), queryFn: () => api.job(jobId) })
+  const qc = useQueryClient()
+  const [editing, setEditing] = useState<EditTarget | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const refresh = () => qc.invalidateQueries({ queryKey: qk.job(jobId) })
+  const act = useMutation({
+    mutationFn: ({ itemId, body }: { itemId: string; body: ItemAction }) => api.itemAction(jobId, itemId, body),
+    onMutate: () => setActionError(null),
+    onSuccess: () => {
+      setEditing(null)
+      void refresh()
+    },
+    onError: (e) => setActionError(e instanceof Error ? e.message : '저장하지 못했습니다.'),
+  })
+  const approveAll = useMutation({
+    mutationFn: () => api.approveAllAuto(jobId),
+    onSuccess: () => void refresh(),
+    onError: (e) => setActionError(e instanceof Error ? e.message : '일괄 승인하지 못했습니다.'),
+  })
 
   if (job.isLoading) {
     return (
@@ -83,10 +103,29 @@ export function JobDetailPage() {
   }
 
   const { job: row, state, items, review, pdfUrl, sheetUrl } = job.data
-  const rows: Row[] = tab === 'review' ? review : items[tab]
   const title = row?.vehicleName || state?.vehicle?.name || state?.filename || jobId
   const status = row ? jobStatus(row) : null
-  const counts = { review: review.length, trim: items.trim.length, color: items.color.length, option: items.option.length, rule: items.rule.length }
+  const pendingReview = review.filter((r) => r.progress !== '완료')
+  const counts = { review: pendingReview.length, trim: items.trim.length, color: items.color.length, option: items.option.length, rule: items.rule.length }
+  const rows: Row[] = tab === 'review' ? [...pendingReview, ...review.filter((r) => r.progress === '완료')] : items[tab]
+  const autoCount = (Object.values(items) as Row[][]).flat().filter((r) => r.status === '자동 확정').length
+  const busy = act.isPending || approveAll.isPending
+
+  /** Data-tab row for an item id (review rows only carry summaries). */
+  const findItem = (itemId: string): { sheet: SheetName; values: Row } | null => {
+    for (const sheet of ['trim', 'color', 'option', 'rule'] as SheetName[]) {
+      const values = items[sheet].find((r) => r.itemId === itemId)
+      if (values) return { sheet, values }
+    }
+    return null
+  }
+  const openEdit = (r: Row) => {
+    const found = findItem(r.itemId)
+    if (!found) return setActionError('이 항목을 시트에서 찾을 수 없습니다. 새로 고침해 보세요.')
+    const reviewRow = review.find((x) => x.itemId === r.itemId)
+    setEditing({ ...found, itemId: r.itemId, passA: reviewRow?.passA, passB: reviewRow?.passB, reasons: reviewRow?.reasons })
+  }
+  const statusOf = (r: Row) => (tab === 'review' ? findItem(r.itemId)?.values.status : r.status) ?? ''
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-6 lg:h-full lg:flex-row">
@@ -118,9 +157,25 @@ export function JobDetailPage() {
                 <FileText className="size-3.5" aria-hidden /> 원본 PDF
               </a>
             )}
+            {autoCount > 0 && (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => approveAll.mutate()}>
+                <CheckCheck className="size-3.5" aria-hidden /> 자동 확정 {autoCount}건 모두 승인
+              </Button>
+            )}
           </div>
-          <p className="mt-2 text-xs text-gray-400">시트에서 직접 고친 내용도 이 화면에 반영됩니다. 승인·수정 버튼은 다음 단계(Phase 4)에서 추가됩니다.</p>
+          <p className="mt-2 text-xs text-gray-400">시트에서 직접 고친 내용도 이 화면에 반영됩니다.</p>
         </div>
+
+        {review.length > 0 && pendingReview.length === 0 && (
+          <div role="status" className="flex items-center gap-2 rounded-lg border border-success-500/30 bg-success-50 px-3 py-2 text-sm text-success-700">
+            <CircleCheck className="size-4" aria-hidden /> 검토 완료 — 확인 필요 항목을 모두 처리했습니다. Google Sheets에 반영되어 있습니다.
+          </div>
+        )}
+        {actionError && (
+          <p role="alert" className="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-700">
+            {actionError}
+          </p>
+        )}
 
         <div role="tablist" aria-label="결과 시트" className="flex gap-1 overflow-x-auto border-b border-gray-200">
           {TABS.map((t) => (
@@ -151,13 +206,16 @@ export function JobDetailPage() {
                       {c.label}
                     </th>
                   ))}
-                  {tab !== 'review' && <th className="px-3 py-2.5 font-medium">상태</th>}
+                  <th className="px-3 py-2.5 font-medium">상태</th>
                   <th className="px-3 py-2.5 font-medium">근거</th>
+                  <th className="px-3 py-2.5 font-medium">
+                    <span className="sr-only">작업</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 align-top">
                 {rows.map((r, i) => (
-                  <tr key={r.itemId || i}>
+                  <tr key={r.itemId || i} className={cn(tab === 'review' && r.progress === '완료' && 'opacity-50', statusOf(r) === '제외' && 'text-gray-400 line-through')}>
                     {COLUMNS[tab].map((c) => (
                       <td key={c.key} className={cn('px-3 py-2.5', c.key === 'footnoteText' && 'max-w-xs text-xs text-gray-600')}>
                         {c.key === 'hex' && r.hex ? (
@@ -171,12 +229,10 @@ export function JobDetailPage() {
                         )}
                       </td>
                     ))}
-                    {tab !== 'review' && (
-                      <td className="px-3 py-2.5">
-                        <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status || '—'}</Badge>
-                        {r.reviewReasons && <span className="mt-1 block max-w-48 text-xs text-gray-500">{r.reviewReasons}</span>}
-                      </td>
-                    )}
+                    <td className="px-3 py-2.5">
+                      <Badge tone={STATUS_TONE[statusOf(r)] ?? 'neutral'}>{statusOf(r) || '—'}</Badge>
+                      {tab !== 'review' && r.reviewReasons && <span className="mt-1 block max-w-48 text-xs text-gray-500">{r.reviewReasons}</span>}
+                    </td>
                     <td className="px-3 py-2.5">
                       {r.evidencePage ? (
                         <button
@@ -190,6 +246,21 @@ export function JobDetailPage() {
                         '—'
                       )}
                     </td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      {r.itemId && (
+                        <span className="flex gap-0.5">
+                          <IconButton label="승인" className="size-8 hover:text-success-700" disabled={busy || statusOf(r) === '승인'} onClick={() => act.mutate({ itemId: r.itemId, body: { action: 'approve' } })}>
+                            <Check className="size-4" />
+                          </IconButton>
+                          <IconButton label="수정" className="size-8 hover:text-primary-600" disabled={busy} onClick={() => openEdit(r)}>
+                            <Pencil className="size-4" />
+                          </IconButton>
+                          <IconButton label="제외" className="size-8 hover:text-danger-700" disabled={busy || statusOf(r) === '제외'} onClick={() => act.mutate({ itemId: r.itemId, body: { action: 'reject' } })}>
+                            <X className="size-4" />
+                          </IconButton>
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -197,6 +268,17 @@ export function JobDetailPage() {
           )}
         </Card>
       </section>
+
+      {editing && (
+        <EditItemDialog
+          key={editing.itemId}
+          target={editing}
+          saving={act.isPending}
+          error={actionError}
+          onClose={() => (setEditing(null), setActionError(null))}
+          onSave={(data) => act.mutate({ itemId: editing.itemId, body: { action: 'edit', data } })}
+        />
+      )}
 
       <section className="min-h-[60vh] lg:h-full lg:w-2/5" aria-label="원본 PDF">
         {pdfUrl ? (

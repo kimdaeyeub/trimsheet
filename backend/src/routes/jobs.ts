@@ -1,5 +1,8 @@
 import { Hono } from 'hono';
-import type { JobDetailResponse } from '@shared/types';
+import * as v from 'valibot';
+import type { ItemActionResponse, JobDetailResponse } from '@shared/types';
+import { applyItemAction, approveAllAuto } from '../sheets/review.ts';
+import { parseJson } from './validate.ts';
 import { getRepo, isSheetsConfigured } from '../sheets/index.ts';
 import { AppError } from '../shared/errors.ts';
 import { readState } from '../store/r2.ts';
@@ -34,4 +37,21 @@ jobs.get('/:id', async (c) => {
 		pdfUrl: pdfUrlFromKey(job?.pdfKey),
 		sheetUrl: isSheetsConfigured(c.env) ? repo.port.spreadsheetUrl() : null,
 	});
+});
+
+const ItemAction = v.variant('action', [
+	v.object({ action: v.literal('approve') }),
+	v.object({ action: v.literal('reject') }),
+	v.object({ action: v.literal('edit'), data: v.record(v.string(), v.pipe(v.string(), v.maxLength(2000))) }),
+]);
+
+jobs.patch('/:id/items/:itemId', async (c) => {
+	const body = await parseJson(c, ItemAction);
+	const res = await applyItemAction(getRepo(c.env), c.req.param('id'), c.req.param('itemId'), body);
+	return c.json<ItemActionResponse>(res);
+});
+
+jobs.post('/:id/approve-all-auto', async (c) => {
+	const approved = await approveAllAuto(getRepo(c.env), c.req.param('id'));
+	return c.json({ approved });
 });

@@ -975,16 +975,16 @@ export const SCAN_POLICY = {
 
 ### Phase 4 — 최소 기능 ②: 교차검증 + "확인 필요" + 검토 화면
 
-- [ ] **4.0** 🔎 스파이크: 두 `extract_pass` 호출이 scratch 대화를 공유하지 않는지 확인. 공유되면 `extract-direct.ts`(B는 `env.AI.run` 직접 호출)로 구현.
-- [ ] **4.1** Pass B 프롬프트(각주 우선, `pages.json` 입력).
-- [ ] **4.2** `extract_pass` B 허용, `pass_a_done → pass_b_done`.
-- [ ] **4.3** `reconcile.ts` 2패스 모드 + 테스트(일치/불일치/한쪽만/집합 순서 무관).
-- [ ] **4.4** `finalize_job`이 A·B 모두 요구, 시스템 프롬프트·`nextStep` 갱신.
-- [ ] **4.5** 스캔본: F1로 두 패스 모두 OpenAI. 키가 없으면 "스캔본이라 처리할 수 없음" 안내 후 `failed`(잠금 해제).
-- [ ] **4.6** 가격표 아님: Pass A `isPriceSheet=false` && `looksLikePriceSheet=false` → B 생략, `outcome='not_pricesheet'`, 시트에는 `작업`·`PDF목록`(판정 "가격표 아님")만.
-- [ ] **4.7** `확인필요` 탭 채우기(1차/2차 값은 사람이 읽는 요약 문자열).
-- [ ] **4.8** REST: `PATCH /api/jobs/:id/items/:itemId`, `POST /api/jobs/:id/approve-all-auto`.
-- [ ] **4.9** `JobDetailPage`(§8.3 ④): 탭, 행 액션, `EditItemDialog`, `PdfViewer`, 시트에서 직접 고친 값이 다시 읽히는지 확인.
+- [x] **4.0** 🔎 스파이크: 두 `extract_pass` 호출이 scratch 대화를 공유하지 않는지 확인. 공유되면 `extract-direct.ts`(B는 `env.AI.run` 직접 호출)로 구현.
+- [x] **4.1** Pass B 프롬프트(각주 우선, `pages.json` 입력).
+- [x] **4.2** `extract_pass` B 허용, `pass_a_done → pass_b_done`.
+- [x] **4.3** `reconcile.ts` 2패스 모드 + 테스트(일치/불일치/한쪽만/집합 순서 무관).
+- [x] **4.4** `finalize_job`이 A·B 모두 요구, 시스템 프롬프트·`nextStep` 갱신.
+- [x] **4.5** 스캔본: F1로 두 패스 모두 OpenAI. 키가 없으면 "스캔본이라 처리할 수 없음" 안내 후 `failed`(잠금 해제).
+- [x] **4.6** 가격표 아님: Pass A `isPriceSheet=false` && `looksLikePriceSheet=false` → B 생략, `outcome='not_pricesheet'`, 시트에는 `작업`·`PDF목록`(판정 "가격표 아님")만.
+- [x] **4.7** `확인필요` 탭 채우기(1차/2차 값은 사람이 읽는 요약 문자열).
+- [x] **4.8** REST: `PATCH /api/jobs/:id/items/:itemId`, `POST /api/jobs/:id/approve-all-auto`.
+- [x] **4.9** `JobDetailPage`(§8.3 ④): 탭, 행 액션, `EditItemDialog`, `PdfViewer`, 시트에서 직접 고친 값이 다시 읽히는지 확인.
 
 **완료 조건**: 같은 PDF로 2패스 추출 → 불일치 항목만 `확인 필요`로 시트에 표시 → 앱 화면 또는 시트에서 승인/수정 → 양쪽에 같은 결과가 보임.
 
@@ -1190,6 +1190,11 @@ export const SCAN_POLICY = {
 | 2026-11-10 | 업로드 메시지에 `[source:…] [file:…] [conversation:…]` 토큰, 화면에서는 토큰 대신 파일 칩으로 표시 | 에이전트에 sourceId·대화 ID 전달, 사용자에게는 깔끔하게 |
 | 2026-11-10 | 검토 화면(`/jobs/:id`)은 Phase 3에서 읽기 전용으로 먼저 제공(탭·근거 페이지 클릭 시 PDF 이동) | 결과 카드의 "검토하기" 링크가 동작하도록. 승인·수정은 Phase 4 |
 | 2026-11-10 | 3.10 실제 대화(도구 카드 진행·결과 카드)는 실제 PDF 실행 때 함께 확인 | Workers AI 과금 최소화. 화면·API·모바일 드로어는 확인 완료 |
+| 2026-11-10 | 4.0 해결(AI 호출 없이): Flue는 `harness: true` 도구 호출마다 `createInvocationHarness`로 새 harness를 만들고 실행 후 닫음 | `extract_pass` A·B는 서로의 대화를 보지 못함 → `extract-direct.ts` 불필요 |
+| 2026-11-10 | `PIPELINE.twoPass=true`. 가격표가 아니면 2차를 건너뛰고 바로 마감 | 교차검증 활성화, 비용 절약 |
+| 2026-11-10 | 검토 수정은 시트별 허용 열만(`sheets/review.ts` `EDITABLE`), 가격·헥사·구분·유형 검증 | 근거·ID·차량 정보가 실수로 바뀌지 않도록 |
+| 2026-11-10 | Excel 재생성 버튼 대신 "자동 확정 모두 승인" | 결과가 Sheets로 바뀌어 재생성이 필요 없음 |
+| 2026-11-10 | 검토 화면의 실제 데이터 확인은 Sheets·PDF 준비 후 마지막에 | 사용자 요청(데이터 필요한 확인은 마지막에) |
 | (미정) | Pass B를 OpenAI로 고정할지 | Phase 8 정확도 결과를 보고 사용자가 결정 |
 |  |  |  |
 

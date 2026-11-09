@@ -2,6 +2,8 @@ import type {
   ApiError,
   Conversation,
   HealthResponse,
+  ItemAction,
+  ItemActionResponse,
   JobDetailResponse,
   JobRow,
   JobState,
@@ -62,6 +64,9 @@ export const api = {
     request<JobRow[]>(`/jobs${conversationId ? `?conversationId=${encodeURIComponent(conversationId)}` : ''}`),
   job: (id: string) => request<JobDetailResponse>(`/jobs/${id}`),
   jobState: (id: string) => request<JobState>(`/jobs/${id}/state`),
+  itemAction: (jobId: string, itemId: string, body: ItemAction) =>
+    request<ItemActionResponse>(`/jobs/${jobId}/items/${itemId}`, json('PATCH', body)),
+  approveAllAuto: (jobId: string) => request<{ approved: number }>(`/jobs/${jobId}/approve-all-auto`, { method: 'POST' }),
 
   notifications: () => request<NotificationsResponse>('/notifications'),
   readNotification: (id: string) => request<void>(`/notifications/${id}/read`, { method: 'POST' }),

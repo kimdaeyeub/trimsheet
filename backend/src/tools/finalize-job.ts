@@ -24,7 +24,9 @@ export const finalizeJob = defineTool({
 		const { bucket, repo, sheetsConfigured } = deps();
 		const { jobId } = data;
 		const state = await loadState(bucket, jobId);
-		requireStage(state, PIPELINE.twoPass ? ['pass_b_done'] : ['pass_a_done', 'pass_b_done'], 'finalize_job');
+		// Two-pass jobs need pass B — except documents pass A already found not to be price sheets.
+		const needsB = PIPELINE.twoPass && state.outcome !== 'not_pricesheet';
+		requireStage(state, needsB ? ['pass_b_done'] : ['pass_a_done', 'pass_b_done'], 'finalize_job');
 		const sheetUrl = sheetsConfigured ? repo.port.spreadsheetUrl() : null;
 
 		const release = () => (state.lockedVehicleKey ? releaseVehicleLock(bucket, state.lockedVehicleKey, jobId) : Promise.resolve());

@@ -26,6 +26,9 @@ export const SCAN_POLICY = {
 } as const;
 
 export const PIPELINE = {
-	/** Phase 2 runs Pass A only; Phase 4 turns on Pass B and cross-validation. */
-	twoPass: false,
+	/**
+	 * Pass A + Pass B cross-validation (Phase 4). Each `extract_pass` call gets its own
+	 * invocation-scoped harness in Flue, so the two passes never see each other's conversation.
+	 */
+	twoPass: true,
 } as const;

@@ -162,3 +162,15 @@ export interface ReviewReason {
 	code: ReviewCode;
 	detail?: string;
 }
+
+export type ItemAction =
+	| { action: 'approve' }
+	| { action: 'reject' }
+	| { action: 'edit'; data: Record<string, string> };
+
+export interface ItemActionResponse {
+	itemId: string;
+	sheet: SheetName;
+	status: string;
+	values: Record<string, string>;
+}

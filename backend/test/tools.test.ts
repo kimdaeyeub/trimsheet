@@ -96,6 +96,10 @@ async function processAll(sourceId: string, year: string, date: string, force = 
 	const h = harnessFor(year, date);
 	const a = await run(extractPass, { data: { jobId: prep.output.jobId, pass: 'A' }, harness: h.harness });
 	if (a.output.skipped) return { prep, a, calls: h.calls };
+	if (a.output.nextStep?.tool === 'extract_pass') {
+		const b = await run(extractPass, { data: { jobId: prep.output.jobId, pass: 'B' }, harness: harnessFor(year, date).harness });
+		if (b.output.skipped) return { prep, a, b, calls: h.calls };
+	}
 	const fin = await run(finalizeJob, { data: { jobId: prep.output.jobId } });
 	return { prep, a, fin, calls: h.calls };
 }
@@ -112,15 +116,15 @@ describe('tool flow (fake model)', () => {
 		const { prep, a, fin, calls } = await processAll(src, '2027', '2026-11-01');
 
 		expect(prep.output).toMatchObject({ skipped: false, pageCount: 4, plannedModel: MODELS.extract, nextStep: { tool: 'extract_pass' } });
-		expect(a!.output).toMatchObject({ skipped: false, model: MODELS.extract, usedFallback: false, nextStep: { tool: 'finalize_job' } });
+		expect(a!.output).toMatchObject({ skipped: false, model: MODELS.extract, usedFallback: false, nextStep: { tool: 'extract_pass', args: { pass: 'B' } } });
 		expect(calls).toEqual([MODELS.extract, MODELS.extract, MODELS.extract]); // three sections, no fallback
 		expect(fin!.output).toMatchObject({ counts: { trims: 2, colors: 1, options: 2, rules: 1 }, sheetsConfigured: false });
-		expect(fin!.output.reviewCount).toBe(0); // quotes match the PDF text, single pass
+		expect(fin!.output.reviewCount).toBe(0); // both passes agree and every quote is on its page
 
 		const repo = getRepo(fakeEnv as never);
 		const [vehicle] = await repo.listVehicles();
 		expect(vehicle).toMatchObject({ vehicleKey: 'hyundai|staria electric|2027', status: '처리 완료', effectiveDate: '2026-11-01' });
-		expect((await repo.getJob(prep.output.jobId))).toMatchObject({ stage: 'finalized', outcome: 'ok', trimCount: '2', modelA: MODELS.extract });
+		expect((await repo.getJob(prep.output.jobId))).toMatchObject({ stage: 'finalized', outcome: 'ok', trimCount: '2', modelA: MODELS.extract, modelB: MODELS.extract });
 		expect((await repo.listNotifications()).unread).toBe(1);
 	});
 
@@ -159,6 +163,43 @@ describe('tool flow (fake model)', () => {
 		const prep = await run(prepareSource, { data: { sourceId: src } });
 		expect(prep.output).toMatchObject({ skipped: true, rule: 'F1' });
 		expect(prep.output.reason).toMatch(/OPENAI_API_KEY/);
+	});
+
+	it('flags disagreements between pass A and pass B for review', async () => {
+		const src = await upload(await priceSheetPdf());
+		const prep = await run(prepareSource, { data: { sourceId: src } });
+		const jobId = prep.output.jobId;
+		await run(extractPass, { data: { jobId, pass: 'A' }, harness: harnessFor('2027', '2026-11-01').harness });
+		const disagreeing = harnessFor('2027', '2026-11-01');
+		const original = disagreeing.harness.prompt;
+		disagreeing.harness.prompt = (text, opts) =>
+			original(text, opts).then((r) => {
+				const data = r.data as { trims?: { name: string; price: number | null }[] };
+				if (data.trims) data.trims = data.trims.map((t) => (t.name === 'Cargo 3' ? { ...t, price: 41_000_000 } : t));
+				return r;
+			});
+		await run(extractPass, { data: { jobId, pass: 'B' }, harness: disagreeing.harness });
+		const fin = await run(finalizeJob, { data: { jobId } });
+		expect(fin.output.reviewCount).toBe(1);
+		const { review } = await getRepo(fakeEnv as never).getJobItems(jobId);
+		expect(review[0]).toMatchObject({ label: 'Cargo 3', passA: 'Cargo 3 · 41,250,000원', passB: 'Cargo 3 · 41,000,000원' });
+	});
+
+	it('skips pass B for documents that are not price sheets', async () => {
+		const src = await upload(await priceSheetPdf());
+		const prep = await run(prepareSource, { data: { sourceId: src } });
+		const notPrice = {
+			prompt: (_t: string, opts: { result: v.GenericSchema; model: string }) =>
+				Promise.resolve({
+					data: v.parse(opts.result, { ...extraction('2027', '2026-11-01'), document: { ...extraction('2027', '2026-11-01').document, isPriceSheet: false } }),
+					usage: { cost: { total: 0 }, totalTokens: 0 },
+					model: { provider: 'test', id: opts.model },
+				}),
+		};
+		const a = await run(extractPass, { data: { jobId: prep.output.jobId, pass: 'A' }, harness: notPrice });
+		expect(a.output.nextStep).toEqual({ tool: 'finalize_job', args: { jobId: prep.output.jobId } });
+		const fin = await run(finalizeJob, { data: { jobId: prep.output.jobId } });
+		expect(fin.output).toMatchObject({ isPriceSheet: false });
 	});
 
 	it('rejects running steps out of order', async () => {
