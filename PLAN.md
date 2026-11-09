@@ -958,15 +958,15 @@ export const SCAN_POLICY = {
 
 ### Phase 3 — 프론트엔드 MVP (대화 + 업로드 + 결과 카드)
 
-- [ ] **3.1** 패키지 설치(§8.1), `tailwindcss()` 플러그인, `styles/index.css`(§8.2). 스캐폴드 파일(`App.tsx`, `App.css`, `index.css`, `assets/*`, `public/icons.svg`) 제거. `index.html` `<title>TrimSheet</title>`, `lang="ko"`, primary 색 "T" 파비콘.
-- [ ] **3.2** `components/ui/*`(Button, Badge, Card, Tabs, Dialog(`<dialog>`), Spinner, EmptyState, Toast).
-- [ ] **3.3** `router.tsx` + `AppLayout`(§8.3), 시트 미설정 배너.
-- [ ] **3.4** `lib/api.ts`(타입 fetch 래퍼), `lib/file.ts`(업로드), `lib/labels.ts`(사유·상태·판정 한국어).
-- [ ] **3.5** `Sidebar`(대화 목록, 새 작업, 이름 변경/삭제, `Google Sheets 열기`).
-- [ ] **3.6** `HomePage`.
-- [ ] **3.7** `ChatPage` + `chat/*` + 도구 카드(`prepare_source`, `SkippedCard`, `extract_pass`, `finalize_job`) + Generic(§8.3 ②).
-- [ ] **3.8** `JobsPage`.
-- [ ] **3.9** 빈 상태/오류 상태(대화 없음, 연결 실패, 업로드 실패, 시트 반영 실패).
+- [x] **3.1** 패키지 설치(§8.1), `tailwindcss()` 플러그인, `styles/index.css`(§8.2). 스캐폴드 파일(`App.tsx`, `App.css`, `index.css`, `assets/*`, `public/icons.svg`) 제거. `index.html` `<title>TrimSheet</title>`, `lang="ko"`, primary 색 "T" 파비콘.
+- [x] **3.2** `components/ui/*`(Button, Badge, Card, Tabs, Dialog(`<dialog>`), Spinner, EmptyState, Toast).
+- [x] **3.3** `router.tsx` + `AppLayout`(§8.3), 시트 미설정 배너.
+- [x] **3.4** `lib/api.ts`(타입 fetch 래퍼), `lib/file.ts`(업로드), `lib/labels.ts`(사유·상태·판정 한국어).
+- [x] **3.5** `Sidebar`(대화 목록, 새 작업, 이름 변경/삭제, `Google Sheets 열기`).
+- [x] **3.6** `HomePage`.
+- [x] **3.7** `ChatPage` + `chat/*` + 도구 카드(`prepare_source`, `SkippedCard`, `extract_pass`, `finalize_job`) + Generic(§8.3 ②).
+- [x] **3.8** `JobsPage`.
+- [x] **3.9** 빈 상태/오류 상태(대화 없음, 연결 실패, 업로드 실패, 시트 반영 실패).
 - [ ] **3.10** 내장 브라우저로 확인: PDF 드래그 → 도구 카드 진행 → 결과 카드 → `Google Sheets에서 보기`. 같은 PDF 재업로드 → `SkippedCard` → `그래도 정리하기`. 새로고침 후 대화 복원(`historyReady`).
 
 **완료 조건**: 브라우저에서 PDF를 올리면 Google Sheets에 결과가 올라가고, 중복 PDF는 건너뛴다는 카드가 뜨며, 메인 컬러 `#3742fa`가 버튼·사용자 말풍선·로고·활성 메뉴·시트 헤더에 일관되게 적용됨.
@@ -1186,6 +1186,10 @@ export const SCAN_POLICY = {
 | 2026-11-10 | 도구 흐름 전체를 가짜 모델·가짜 바인딩으로 테스트(`test/tools.test.ts`) | Workers AI 과금 없이 중복·이전 연식·갱신·스캔본 시나리오 검증 |
 | 2026-11-10 | 스캔본 판정을 "빈 페이지 비율 ≥ 80%"로 | 표지·안내 페이지가 짧은 정상 가격표를 스캔본으로 오판하지 않도록 |
 | 2026-11-10 | 백엔드 번들 gzip ≈ 2.0MB | Workers 무료 플랜 한도(3MB) 안 |
+| 2026-11-10 | 프론트: `react-router` v8(라이브러리 모드), TanStack Query, Tailwind v4, Pretendard(CDN) | 계획 §8.1 그대로(라우터만 최신 메이저) |
+| 2026-11-10 | 업로드 메시지에 `[source:…] [file:…] [conversation:…]` 토큰, 화면에서는 토큰 대신 파일 칩으로 표시 | 에이전트에 sourceId·대화 ID 전달, 사용자에게는 깔끔하게 |
+| 2026-11-10 | 검토 화면(`/jobs/:id`)은 Phase 3에서 읽기 전용으로 먼저 제공(탭·근거 페이지 클릭 시 PDF 이동) | 결과 카드의 "검토하기" 링크가 동작하도록. 승인·수정은 Phase 4 |
+| 2026-11-10 | 3.10 실제 대화(도구 카드 진행·결과 카드)는 실제 PDF 실행 때 함께 확인 | Workers AI 과금 최소화. 화면·API·모바일 드로어는 확인 완료 |
 | (미정) | Pass B를 OpenAI로 고정할지 | Phase 8 정확도 결과를 보고 사용자가 결정 |
 |  |  |  |
 

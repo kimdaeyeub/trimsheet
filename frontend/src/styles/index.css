@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eef0ff;
+  --color-primary-100: #dfe2ff;
+  --color-primary-200: #c2c7ff;
+  --color-primary-300: #9aa1fd;
+  --color-primary-400: #6b74fb;
+  --color-primary-500: #3742fa; /* 메인 컬러 */
+  --color-primary-600: #2a33e0;
+  --color-primary-700: #2128b5;
+  --color-primary-800: #1d238f;
+  --color-primary-900: #1c2171;
+
+  --color-success-50: #f0fdf4;
+  --color-success-500: #16a34a; /* 자동 확정 */
+  --color-success-700: #15803d;
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b; /* 확인 필요 */
+  --color-warning-700: #b45309;
+  --color-danger-50: #fef2f2;
+  --color-danger-500: #dc2626; /* 실패/제외 */
+  --color-danger-700: #b91c1c;
+
+  --color-canvas: #f7f8fc;
+
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, sans-serif;
+  --radius-card: 12px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-canvas text-gray-900 antialiased;
+  font-family: var(--font-sans);
+  word-break: keep-all;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary-300);
+  outline-offset: 2px;
+}
