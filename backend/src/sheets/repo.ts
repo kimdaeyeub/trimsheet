@@ -92,7 +92,10 @@ export class SheetsRepo {
 				}
 			}
 		}
-		if (!existing.has(TABS.setting.title)) await this.setSetting('baseline_done', 'FALSE');
+		if (!existing.has(TABS.setting.title)) {
+			const spec = TABS.setting as TabSpec;
+			await this.port.append(spec.title, [toCells(spec, { key: 'baseline_done', value: 'FALSE' })]);
+		}
 		ensuredSpreadsheets.add(this.layoutKey);
 	}
 
@@ -248,6 +251,26 @@ export class SheetsRepo {
 		return older.length;
 	}
 
+	// ---- scan runs (스캔기록) --------------------------------------------------
+
+	async startScanRun(scanRunId: string, trigger: 'cron' | 'manual', mode: 'baseline' | 'normal'): Promise<void> {
+		await this.appendOne('scan', { scanRunId, trigger, mode: mode === 'baseline' ? '기준선' : '일반', startedAt: kstNow() });
+	}
+
+	async finishScanRun(
+		scanRunId: string,
+		patch: { candidateCount: number; processCount: number; skipCount: number; holdCount: number; failures: string },
+	): Promise<void> {
+		const { scan } = await this.read('scan');
+		const rec = findByKey(scan, 'scanRunId', scanRunId);
+		if (rec) await this.updateOne('scan', rec, { ...patch, finishedAt: kstNow() });
+	}
+
+	async listScanRuns(limit = 20): Promise<Record<string, string>[]> {
+		const { scan } = await this.read('scan');
+		return scan.map((r) => r.values).sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, limit);
+	}
+
 	// ---- notifications (_알림) ------------------------------------------------
 
 	async listNotifications(limit = 50): Promise<{ items: Notification[]; unread: number }> {
@@ -288,6 +311,7 @@ export class SheetsRepo {
 	}
 
 	async setSetting(key: string, value: string): Promise<void> {
+		await this.ensureLayout();
 		const spec = TABS.setting as TabSpec;
 		const raw = await this.port.readTabs([spec.title]);
 		const rec = findByKey(toRecords(spec, raw[spec.title] ?? []), 'key', key);

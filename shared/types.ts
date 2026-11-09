@@ -174,3 +174,27 @@ export interface ItemActionResponse {
 	status: string;
 	values: Record<string, string>;
 }
+
+/** One row of the 차량 registry tab. */
+export interface VehicleRow {
+	vehicleKey: string;
+	familyKey: string;
+	brand: string;
+	vehicleName: string;
+	modelYear: string;
+	effectiveDate: string;
+	status: string;
+	lastJobId: string;
+	sourceId: string;
+	sha256: string;
+	sourceUrl: string;
+	reason: string;
+	firstSeenAt: string;
+	updatedAt: string;
+}
+
+export interface ScanRunsResponse {
+	runs: Record<string, string>[];
+	baselineDone: boolean;
+	schedule: string;
+}

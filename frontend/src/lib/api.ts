@@ -8,6 +8,8 @@ import type {
   JobRow,
   JobState,
   NotificationsResponse,
+  ScanRunsResponse,
+  VehicleRow,
   SettingsResponse,
   UploadResponse,
 } from '@shared/types'
@@ -67,6 +69,12 @@ export const api = {
   itemAction: (jobId: string, itemId: string, body: ItemAction) =>
     request<ItemActionResponse>(`/jobs/${jobId}/items/${itemId}`, json('PATCH', body)),
   approveAllAuto: (jobId: string) => request<{ approved: number }>(`/jobs/${jobId}/approve-all-auto`, { method: 'POST' }),
+
+  vehicles: () => request<VehicleRow[]>('/vehicles'),
+  processVehicle: (key: string) => request<{ conversationId: string }>(`/vehicles/${encodeURIComponent(key)}/process`, { method: 'POST' }),
+  dismissVehicle: (key: string) => request<void>(`/vehicles/${encodeURIComponent(key)}/dismiss`, { method: 'POST' }),
+  scanRuns: () => request<ScanRunsResponse>('/scan-runs'),
+  startScan: () => request<{ scanRunId: string; mode: 'baseline' | 'normal' }>('/scan-runs', { method: 'POST' }),
 
   notifications: () => request<NotificationsResponse>('/notifications'),
   readNotification: (id: string) => request<void>(`/notifications/${id}/read`, { method: 'POST' }),

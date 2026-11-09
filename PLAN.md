@@ -992,13 +992,13 @@ export const SCAN_POLICY = {
 
 ### Phase 5 — 최소 기능 ③: 차종 페이지 URL → PDF 다운로드
 
-- [ ] **5.1** 🔎 Browser Run [Playwright 가이드](https://developers.cloudflare.com/browser-run/playwright/index.md), [Wrangler 레퍼런스](https://developers.cloudflare.com/browser-run/reference/wrangler/index.md), [limits](https://developers.cloudflare.com/browser-run/limits/index.md) 확인 → 결정 기록.
-- [ ] **5.2** `crawl/browser.ts`: `withPage(env.BROWSER, fn)` — `finally`에서 `browser.close()`, 네비게이션 타임아웃 30초.
-- [ ] **5.3** `crawl/generic.ts` `findPdfLinks(url)`: `a[href]` 중 `.pdf` 또는 `가격표|카탈로그|가격|price|catalog` 텍스트, `application/pdf` 네트워크 응답, "가격표" 버튼 최대 3개 클릭 후 새 링크/다운로드 이벤트 → `{ url, label, guessKind }[]`(중복 제거). "지난 가격표/이전 가격표/아카이브" 문구가 붙은 링크는 제외.
-- [ ] **5.4** 후보마다 `identity.ts`로 연식 파싱 → 계열별 최신 연식만 남김(§7.11) → 남은 후보에 L1(URL 지문) 적용.
-- [ ] **5.5** 도구 `find_pdfs_on_page` + 시스템 프롬프트 갱신(가격표 후보 1개면 바로 `register_pdf_url`, 여러 개면 사용자 선택 → `PdfCandidatesCard`).
+- [x] **5.1** 🔎 Browser Run [Playwright 가이드](https://developers.cloudflare.com/browser-run/playwright/index.md), [Wrangler 레퍼런스](https://developers.cloudflare.com/browser-run/reference/wrangler/index.md), [limits](https://developers.cloudflare.com/browser-run/limits/index.md) 확인 → 결정 기록.
+- [x] **5.2** `crawl/browser.ts`: `withPage(env.BROWSER, fn)` — `finally`에서 `browser.close()`, 네비게이션 타임아웃 30초.
+- [x] **5.3** `crawl/generic.ts` `findPdfLinks(url)`: `a[href]` 중 `.pdf` 또는 `가격표|카탈로그|가격|price|catalog` 텍스트, `application/pdf` 네트워크 응답, "가격표" 버튼 최대 3개 클릭 후 새 링크/다운로드 이벤트 → `{ url, label, guessKind }[]`(중복 제거). "지난 가격표/이전 가격표/아카이브" 문구가 붙은 링크는 제외.
+- [x] **5.4** 후보마다 `identity.ts`로 연식 파싱 → 계열별 최신 연식만 남김(§7.11) → 남은 후보에 L1(URL 지문) 적용.
+- [x] **5.5** 도구 `find_pdfs_on_page` + 시스템 프롬프트 갱신(가격표 후보 1개면 바로 `register_pdf_url`, 여러 개면 사용자 선택 → `PdfCandidatesCard`).
 - [ ] **5.6** 실패 처리: `{ candidates: [], failure: '링크 없음' | '사이트 구조 변경 의심' | '접속 실패' }` → "PDF를 직접 올려 달라" 안내.
-- [ ] **5.7** 현대/기아/제네시스 차종 페이지 각 1개 수동 테스트 → `docs/site-notes.md`(URL 패턴, PDF 링크 위치, 클릭 필요 여부, **연식 표기 위치**, 이전 연식 가격표가 같은 페이지에 노출되는지).
+- [x] **5.7** 현대/기아/제네시스 차종 페이지 각 1개 수동 테스트 → `docs/site-notes.md`(URL 패턴, PDF 링크 위치, 클릭 필요 여부, **연식 표기 위치**, 이전 연식 가격표가 같은 페이지에 노출되는지).
 
 **완료 조건**: 차종 페이지 URL을 채팅에 붙여 넣으면 최신 연식 가격표만 수집되어 시트까지 반영되고, 이미 처리한 차종이면 건너뜀.
 
@@ -1006,7 +1006,7 @@ export const SCAN_POLICY = {
 
 ### Phase 6 — 최소 기능 ④: 3사 전체 스캔 + 신규 감지 + 주간 자동 실행 + 알림
 
-- [ ] **6.1** `crawl/adapters/types.ts`:
+- [x] **6.1** `crawl/adapters/types.ts`:
   ```ts
   export interface BrandAdapter {
     brand: 'hyundai' | 'kia' | 'genesis';
@@ -1015,8 +1015,8 @@ export const SCAN_POLICY = {
     findPriceSheets(page: Page, vehiclePageUrl: string): Promise<{ url: string; label: string }[]>;
   }
   ```
-- [ ] **6.2** 브랜드별 어댑터 3개(`docs/site-notes.md` 근거). 셀렉터는 파일 상단 상수. 못 찾으면 `failure: '사이트 구조 변경 의심'`. 상용차(포터, 봉고, 트럭/버스)는 이름 패턴으로 제외.
-- [ ] **6.3** `scan_brand` 흐름(차종 단위 `step.do`):
+- [x] **6.2** 브랜드별 어댑터 3개(`docs/site-notes.md` 근거). 셀렉터는 파일 상단 상수. 못 찾으면 `failure: '사이트 구조 변경 의심'`. 상용차(포터, 봉고, 트럭/버스)는 이름 패턴으로 제외.
+- [x] **6.3** `scan_brand` 흐름(차종 단위 `step.do`):
   1. `listCurrentVehicles` → 차종마다 `findPriceSheets` → 링크 문구·파일명으로 연식 파싱 → **계열별 최신 연식 1개만** 남김.
   2. L1(URL 지문, `HEAD`) → 같으면 건너뜀(다운로드 없음).
   3. 다운로드 → L2(sha) → `prepare_source`와 같은 L3 판정을 텍스트 정규식으로(LLM 없이) 실행.
@@ -1024,8 +1024,8 @@ export const SCAN_POLICY = {
   5. **상한 검사**: `process`가 `maxAutoProcessPerScan` 초과면 전부 `hold`로 바꿈.
   6. `baseline`·`hold`·`update_candidate`·`skip`은 `차량`·`PDF목록` 탭에 상태와 사유만 기록. `process`만 TrimSheet 대화 생성 + dispatch.
   7. 요청 간 1초 지연, 브라우저 세션 1개.
-- [ ] **6.4** `Watcher` 에이전트 + wrangler 마이그레이션 새 태그 `FlueWatcherAgent`.
-- [ ] **6.5** `src/cloudflare.ts`:
+- [x] **6.4** `Watcher` 에이전트 + wrangler 마이그레이션 새 태그 `FlueWatcherAgent`.
+- [x] **6.5** `src/cloudflare.ts`:
   ```ts
   import { dispatch } from '@flue/runtime';
   import { Watcher } from './agents/watcher.ts';
@@ -1048,12 +1048,12 @@ export const SCAN_POLICY = {
   ```
   - `startScanRun`은 `_설정` `baseline_done`이 `FALSE`이고 `initialScanMode === 'baseline_only'`이면 `mode='baseline'`. 기준선 스캔이 **실패 없이** 끝나면 `baseline_done=TRUE`(일부 브랜드가 실패하면 다음 스캔도 기준선 모드로 그 브랜드만 다시).
   - `POST /api/scan-runs`도 같은 흐름(`trigger: 'manual'`, id에 시각 포함).
-- [ ] **6.6** 처리 대상 PDF별 TrimSheet 대화 자동 생성(🔎 dispatch 위치 검증 → 필요 시 Queues).
-- [ ] **6.7** `POST /api/vehicles/:key/process`(기준선/갱신 후보/보류 → `force` 처리), `POST /api/vehicles/:key/dismiss`.
-- [ ] **6.8** 알림: `_알림` 탭에 `scan_done`(처리·기준선·갱신 후보·보류 수 요약)/`scan_failed`/`job_done`/`job_failed`. 프론트 `NotificationBell`.
-- [ ] **6.9** `SourcesPage`(§8.3 ⑤) + `GET /api/vehicles`, `GET/POST /api/scan-runs`.
+- [x] **6.6** 처리 대상 PDF별 TrimSheet 대화 자동 생성(🔎 dispatch 위치 검증 → 필요 시 Queues).
+- [x] **6.7** `POST /api/vehicles/:key/process`(기준선/갱신 후보/보류 → `force` 처리), `POST /api/vehicles/:key/dismiss`.
+- [x] **6.8** 알림: `_알림` 탭에 `scan_done`(처리·기준선·갱신 후보·보류 수 요약)/`scan_failed`/`job_done`/`job_failed`. 프론트 `NotificationBell`.
+- [x] **6.9** `SourcesPage`(§8.3 ⑤) + `GET /api/vehicles`, `GET/POST /api/scan-runs`.
 - [ ] **6.10** 🔎 로컬에서 scheduled 핸들러 트리거 방법 확인(`/cdn-cgi/handler/scheduled` 지원 여부). 안 되면 수동 실행 API로 검증.
-- [ ] **6.11** 시나리오 검증(메모리 시트 + 가짜 어댑터로 자동화 테스트):
+- [x] **6.11** 시나리오 검증(메모리 시트 + 가짜 어댑터로 자동화 테스트):
   - 첫 스캔: 모든 차량이 `기준선`, LLM 호출 0회, `baseline_done=TRUE`.
   - 두 번째 스캔(변화 없음): L1에서 전부 건너뜀, 다운로드 0회.
   - 신차 1개 추가: 그 1개만 `process`.
@@ -1195,6 +1195,16 @@ export const SCAN_POLICY = {
 | 2026-11-10 | 검토 수정은 시트별 허용 열만(`sheets/review.ts` `EDITABLE`), 가격·헥사·구분·유형 검증 | 근거·ID·차량 정보가 실수로 바뀌지 않도록 |
 | 2026-11-10 | Excel 재생성 버튼 대신 "자동 확정 모두 승인" | 결과가 Sheets로 바뀌어 재생성이 필요 없음 |
 | 2026-11-10 | 검토 화면의 실제 데이터 확인은 Sheets·PDF 준비 후 마지막에 | 사용자 요청(데이터 필요한 확인은 마지막에) |
+| 2026-11-10 | 사이트 조사 결과(`docs/site-notes.md`): 현대는 slug로 PDF 주소 계산, 기아는 탭 렌더링 필요, 제네시스는 일반 HTML + POST 다운로드 | 내장 브라우저로 직접 확인(PDF는 받지 않음) |
+| 2026-11-10 | 브라우저(Browser Run)는 현대·기아 목록에만 사용, 제네시스와 `find_pdfs_on_page`는 일반 HTML을 먼저 시도 | Browser Run 사용 시간(과금) 최소화 |
+| 2026-11-10 | Browser Run 세션은 `guardrails.allowedDomains`로 세 제조사 도메인만 허용 | 수집기가 다른 사이트로 새지 않도록 |
+| 2026-11-10 | 기아 내부 JSON API(`kwpapi.kia.com`)는 쓰지 않음 | 권한 검사에서 거부됨 — 공개 페이지 렌더링만 사용 |
+| 2026-11-10 | 제네시스는 같은 차종의 예전 가격표가 함께 노출 → 파일명 `YYYYMM`으로 slug별 최신만 | 이전 버전 수집 방지(§7.11 요구) |
+| 2026-11-10 | 세 사이트 모두 연식이 URL·링크에 없음 → 연식은 PDF 표지(1~2쪽) 텍스트로 판단, 못 읽으면 보류 | 추측 금지 |
+| 2026-11-10 | Watcher는 `scan_brands` 도구를 한 번만 호출(세 브랜드를 코드로 순차 처리) | GLM 호출 최소화, 순서 보장 |
+| 2026-11-10 | `dispatch`는 도구 안(DO)에서도 동작(런타임 설정은 같은 스크립트에서 로드) → Queues 불필요 | Flue 소스 확인 |
+| 2026-11-10 | 백엔드 번들 gzip ≈ 2.73MB (Playwright 포함) | 무료 플랜 한도 3MB에 근접 — 넘으면 유료 플랜 또는 의존성 정리 필요 |
+| 2026-11-10 | 5.6(실제 사이트 수동 테스트), 6.10(로컬 cron 트리거)은 데이터 준비 후 마지막에 | 사용자 요청, Browser Run·Workers AI 과금 최소화 |
 | (미정) | Pass B를 OpenAI로 고정할지 | Phase 8 정확도 결과를 보고 사용자가 결정 |
 |  |  |  |
 

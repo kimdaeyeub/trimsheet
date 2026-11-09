@@ -27,11 +27,13 @@ interface RawItem {
 	hasEOL?: boolean;
 }
 
-export async function extractPages(bytes: ArrayBuffer): Promise<PageText[]> {
+/** All pages, or only the first `maxPages` (e.g. the cover for identity checks). */
+export async function extractPages(bytes: ArrayBuffer, maxPages?: number): Promise<PageText[]> {
 	const pdf = await getDocumentProxy(new Uint8Array(bytes.slice(0)));
 	try {
 		const pages: PageText[] = [];
-		for (let n = 1; n <= pdf.numPages; n++) {
+		const last = maxPages ? Math.min(maxPages, pdf.numPages) : pdf.numPages;
+		for (let n = 1; n <= last; n++) {
 			const page = await pdf.getPage(n);
 			const content = await page.getTextContent();
 			const items: TextItem[] = [];

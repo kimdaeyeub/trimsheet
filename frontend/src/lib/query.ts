@@ -19,4 +19,6 @@ export const qk = {
   job: (id: string) => ['job', id] as const,
   jobState: (id: string) => ['jobState', id] as const,
   notifications: ['notifications'] as const,
+  vehicles: ['vehicles'] as const,
+  scanRuns: ['scanRuns'] as const,
 }

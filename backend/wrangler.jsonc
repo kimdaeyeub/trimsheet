@@ -21,5 +21,8 @@
 	// Every agent generates a Durable Object class named after its identity
 	// (TrimSheet -> FlueTrimSheetAgent). Append a new tag when you add an agent:
 	// https://flueframework.com/docs/guide/cloudflare-target/#managing-migrations
-	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["FlueTrimSheetAgent"] }]
+	"migrations": [
+		{ "tag": "v1", "new_sqlite_classes": ["FlueTrimSheetAgent"] },
+		{ "tag": "v2", "new_sqlite_classes": ["FlueWatcherAgent"] }
+	]
 }

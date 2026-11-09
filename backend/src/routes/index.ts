@@ -6,8 +6,10 @@ import { conversations } from './conversations.ts';
 import { files } from './files.ts';
 import { jobs } from './jobs.ts';
 import { notifications } from './notifications.ts';
+import { scans } from './scans.ts';
 import { system } from './system.ts';
 import { uploads } from './uploads.ts';
+import { vehicles } from './vehicles.ts';
 
 export const api = new Hono<{ Bindings: Env }>();
 
@@ -17,6 +19,8 @@ api.route('/uploads', uploads);
 api.route('/files', files);
 api.route('/jobs', jobs);
 api.route('/notifications', notifications);
+api.route('/vehicles', vehicles);
+api.route('/scan-runs', scans);
 
 api.onError(handleError);
 api.notFound((c) => c.json({ error: { code: 'not_found', message: '없는 API 경로입니다.' } }, 404));

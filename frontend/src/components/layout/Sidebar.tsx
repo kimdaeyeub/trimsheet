@@ -104,6 +104,8 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
   const { conversationId } = useParams()
   const conversations = useQuery({ queryKey: qk.conversations, queryFn: api.conversations })
   const settings = useQuery({ queryKey: qk.settings, queryFn: api.settings, staleTime: 5 * 60_000 })
+  const vehicles = useQuery({ queryKey: qk.vehicles, queryFn: api.vehicles, staleTime: 60_000 })
+  const attention = (vehicles.data ?? []).filter((v) => v.status === '보류' || v.status === '갱신 후보').length
   const nav = ({ isActive }: { isActive: boolean }) =>
     cn('flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm', isActive ? 'bg-primary-50 font-medium text-primary-700' : 'text-gray-700 hover:bg-gray-100')
 
@@ -138,6 +140,11 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
         </NavLink>
         <NavLink to="/sources" className={nav} onClick={onNavigate}>
           <Radar className="size-4" aria-hidden /> 수집 현황
+          {attention > 0 && (
+            <span className="ml-auto rounded-full bg-warning-50 px-1.5 text-xs font-semibold text-warning-700" title="보류·갱신 후보">
+              {attention}
+            </span>
+          )}
         </NavLink>
         {settings.data?.spreadsheetUrl ? (
           <a href={settings.data.spreadsheetUrl} target="_blank" rel="noreferrer" className={nav({ isActive: false })}>
