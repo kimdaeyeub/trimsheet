@@ -1,9 +1,9 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "trimsheet-backend",
-	// No public URL: the frontend Worker reaches this Worker only through its service binding
-	// (PLAN.md §8.5). Cron triggers and Durable Objects keep working without a public route.
-	"workers_dev": false,
+	// Public workers.dev URL for the Vercel-hosted frontend. Every /api request needs the API_KEY
+	// secret in the x-trimsheet-key header (src/shared/api-key.ts); only the Vercel proxy has it.
+	"workers_dev": true,
 	"preview_urls": false,
 	"compatibility_date": "2026-11-08",
 	"compatibility_flags": ["nodejs_compat"],
@@ -24,7 +24,8 @@
 	"triggers": { "crons": ["0 0 * * 1"] },
 	// Google Sheets and OpenAI settings are NOT kept here (this repository is public):
 	// GOOGLE_SPREADSHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, OPENAI_API_KEY,
-	// NOTIFY_FROM (email sender, e.g. trimsheet@your-domain.com), APP_URL (link in emails)
+	// NOTIFY_FROM (email sender, e.g. trimsheet@your-domain.com), APP_URL (link in emails),
+	// API_KEY (shared with the Vercel proxy)
 	// live in backend/.env locally and are set with `wrangler secret put` in production.
 	// Every agent generates a Durable Object class named after its identity
 	// (TrimSheet -> FlueTrimSheetAgent). Append a new tag when you add an agent:

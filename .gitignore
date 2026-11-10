@@ -24,3 +24,6 @@ dist-ssr/
 # Manufacturer PDFs and data derived from them stay local (copyrighted material)
 backend/fixtures/pdf/
 backend/fixtures/golden/
+
+# Vercel CLI link data
+.vercel
