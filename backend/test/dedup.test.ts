@@ -30,6 +30,8 @@ describe('decide (PLAN.md §7.11)', () => {
 	it('R1 skips the same file that was already processed — even when forced', () => {
 		expect(d(cand('2026', { sha256: 'sha-2026' }), [reg('2026')])).toMatchObject({ action: 'skip', rule: 'R1', existingJobId: 'job_2026' });
 		expect(d(cand('2026', { sha256: 'sha-2026', force: true }), [reg('2026')])).toMatchObject({ rule: 'R1' });
+		// Same bytes under a different (inferred) model year are still the same file.
+		expect(d(cand('2027', { sha256: 'sha-2026' }), [reg('2026')])).toMatchObject({ action: 'skip', rule: 'R1', existingJobId: 'job_2026' });
 	});
 
 	it('R2 skips an older model year (G80 2025 when 2026 exists)', () => {

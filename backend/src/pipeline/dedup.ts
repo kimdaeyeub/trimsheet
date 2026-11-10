@@ -46,8 +46,11 @@ export function decide(c: Candidate, registry: readonly RegisteredVehicle[], pol
 
 	// Never overridden by `force`.
 	if (same?.status === '처리 중') return { action: 'skip', rule: 'R5', reason: '이미 처리 중', existingJobId: same.lastJobId || undefined };
-	if (same && c.sha256 && same.sha256 === c.sha256 && same.status === '처리 완료') {
-		return { action: 'skip', rule: 'R1', reason: '이미 정리된 가격표(같은 파일)', existingJobId: same.lastJobId || undefined };
+	// R1 looks at every vehicle, not just this key: an inferred model year (no "20XX년형" in the PDF)
+	// can differ for the same file seen in a later year.
+	const sameFile = c.sha256 ? registry.find((r) => r.sha256 === c.sha256 && r.status === '처리 완료') : undefined;
+	if (sameFile) {
+		return { action: 'skip', rule: 'R1', reason: '이미 정리된 가격표(같은 파일)', existingJobId: sameFile.lastJobId || undefined };
 	}
 
 	if (c.force) return { action: 'process', rule: 'R11', reason: '사용자 요청으로 다시 정리' };

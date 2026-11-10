@@ -860,7 +860,7 @@ export const SCAN_POLICY = {
 - [x] **0.2** Worker 이름: `trimsheet-backend`, `trimsheet-frontend`. (🔎 배포 이력 확인)
 - [x] **0.3** 두 `wrangler.jsonc`: `compatibility_date: "2026-11-08"`(설치된 workerd가 지원하는 최신 날짜), `observability: { "enabled": true, "traces": { "enabled": true } }`.
 - [x] **0.4** `backend` 의존성: `npm i valibot unpdf pdf-lib @cloudflare/playwright` / `npm i -D vitest @cloudflare/vitest-pool-workers`. (🔎 vitest-pool-workers와 Vite 8 호환, valibot 버전이 Flue와 맞는지)
-- [ ] **0.5** (→ Phase 9.11) R2 버킷 생성(사용자 로그인 필요 — 안 돼 있으면 `npx wrangler login`을 요청하고 멈춤): `npx wrangler r2 bucket create trimsheet-files`.
+- [x] **0.5** (2026-11-10 완료) R2 버킷 생성(사용자 로그인 필요 — 안 돼 있으면 `npx wrangler login`을 요청하고 멈춤): `npx wrangler r2 bucket create trimsheet-files`.
 - [x] **0.6** `backend/wrangler.jsonc`:
   ```jsonc
   {
@@ -921,7 +921,7 @@ export const SCAN_POLICY = {
   - `files`: `pdf/` 접두사만 허용, R2 스트림 반환, `content-disposition: inline`.
 - [x] **1.6** `src/app.ts` 재작성: Hello 제거, 라우트 마운트, `app.route('/api/agents/trimsheet', createAgentRouter(TrimSheet))`. `hello.ts` 삭제.
 - [x] **1.7** 임시 `TrimSheet`(도구 없이)로 GLM 대화 확인: `curl -X POST localhost:5174/api/agents/trimsheet/test-1 -H 'content-type: application/json' -d '{"kind":"user","body":"안녕"}'`.
-- [ ] **1.8** (→ Phase 9.1) 사용자가 Sheets 설정을 마쳤다면: `/api/health`가 `sheets: 'ok'`, 첫 호출에 탭·헤더가 자동 생성되는지 실제 시트로 확인.
+- [x] **1.8** (2026-11-10, 9.1에서 확인) 사용자가 Sheets 설정을 마쳤다면: `/api/health`가 `sheets: 'ok'`, 첫 호출에 탭·헤더가 자동 생성되는지 실제 시트로 확인.
 
 **완료 조건**: PDF 업로드 → R2 저장 + (설정된 경우) `PDF목록` 탭에 행 추가, 같은 파일 재업로드 시 `alreadyKnown: true`, GLM이 채팅에 응답, 테스트 통과.
 
@@ -1103,7 +1103,7 @@ export const SCAN_POLICY = {
   - R2 활성화(대시보드) — 9.11 전까지
   - 정답 데이터 3종(CSV, 시트와 같은 열 구성) — 9.10 전까지
   - 결정: 배포 후 Cloudflare Access 적용 여부(9.11)
-- [ ] **9.1 Google Sheets 연결** (← 1.8) — dev 서버 재시작 후 `GET /api/health`가 `sheets: "ok"`, 스프레드시트에 탭 12개(숨김 3개)와 헤더·드롭다운이 생성됨. 화면의 노란 배너가 사라짐.
+- [x] **9.1 Google Sheets 연결** (← 1.8, 2026-11-10 통과) — dev 서버 재시작 후 `GET /api/health`가 `sheets: "ok"`, 스프레드시트에 탭 12개(숨김 3개)와 헤더·드롭다운이 생성됨. 화면의 노란 배너가 사라짐.
 - [ ] **9.2 ⚡ 실제 PDF 1개 처리** (← 2.0, 2.1, 3.10) — 화면에서 PDF를 올려 대화 1회. 예상 GLM 호출 ≈ 대화 4~6턴 + 추출 6회.
   - 통과 기준: 도구 카드가 분석→1차→2차→마감 순서로 진행, 결과 카드가 뜨고 시트 탭에 행이 생김, 모든 행에 근거 페이지, 규칙 행에 각주 원문.
   - 함께 확인: GLM 구조화 출력이 스키마를 통과하는지, 도구 안 `cloudflare:workers` env 접근(`shared/env.ts` TODO), 폴백이 필요한 경우 OpenAI 모델 ID(`shared/config.ts` TODO). 결과를 결정 기록에.

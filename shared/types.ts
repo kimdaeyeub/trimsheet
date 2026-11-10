@@ -65,6 +65,8 @@ export interface JobState {
 		brand: Brand | null;
 		name: string | null;
 		modelYear: string | null;
+		/** 'stated' = "20XX년형" in the PDF; otherwise inferred (see backend identity.ts). */
+		modelYearSource?: 'stated' | 'effective_date' | 'first_seen' | null;
 		effectiveDate: string | null;
 		vehicleKey: string | null;
 		familyKey: string | null;

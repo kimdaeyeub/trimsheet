@@ -46,7 +46,7 @@ const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 export async function getAccessToken(
 	sa: ServiceAccount,
 	scope = SHEETS_SCOPE,
-	fetcher: typeof fetch = fetch,
+	fetcher: typeof fetch = (input, init) => fetch(input, init),
 	now: () => number = Date.now,
 ): Promise<string> {
 	const cacheKey = `${sa.email}|${scope}`;

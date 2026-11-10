@@ -1,7 +1,7 @@
 // Compare pass A and pass B, run checks, decide 자동 확정 / 확인 필요 (PLAN.md §7.7).
 import type { ReviewCode, ReviewReason, SheetName } from '@shared/types';
 import { verifyQuote, type PageLookup } from './evidence.ts';
-import { itemKey, normName, sameSet } from './normalize.ts';
+import { itemDisc, itemKey, keysFor, normName, sameSet } from './normalize.ts';
 import type { ColorItem, Extraction, OptionItem, RuleItem, TrimItem } from './schema.ts';
 import { contextFor, ruleConflicts, validateColor, validateOption, validateRule, validateTrim, type ValidationContext } from './validate.ts';
 
@@ -100,7 +100,14 @@ export function reconcile(a: Extraction, b: Extraction | null, opts: ReconcileOp
 	const ctx = contextFor(mergedForContext(a, b), opts.pageCount);
 	const items: ReconciledItem[] = [];
 
-	const processSheet = <S extends SheetName>(sheet: S, la: ItemOf[S][], lb: ItemOf[S][] | null, key: (i: ItemOf[S]) => string) => {
+	const processSheet = <S extends SheetName>(
+		sheet: S,
+		la: ItemOf[S][],
+		lb: ItemOf[S][] | null,
+		baseKey: (i: ItemOf[S]) => string,
+		disc: (i: ItemOf[S]) => string,
+	) => {
+		const key = keysFor(lb ? [la, lb] : [la], baseKey, disc);
 		const A = indexBy(la, key);
 		const B = lb ? indexBy(lb, key) : null;
 		const keys = new Set([...A.map.keys(), ...(B ? B.map.keys() : [])]);
@@ -134,10 +141,10 @@ export function reconcile(a: Extraction, b: Extraction | null, opts: ReconcileOp
 		}
 	};
 
-	processSheet('trim', a.trims, b?.trims ?? null, itemKey.trim);
-	processSheet('color', a.colors, b?.colors ?? null, itemKey.color);
-	processSheet('option', a.options, b?.options ?? null, itemKey.option);
-	processSheet('rule', a.rules, b?.rules ?? null, itemKey.rule);
+	processSheet('trim', a.trims, b?.trims ?? null, itemKey.trim, itemDisc.trim);
+	processSheet('color', a.colors, b?.colors ?? null, itemKey.color, itemDisc.color);
+	processSheet('option', a.options, b?.options ?? null, itemKey.option, itemDisc.option);
+	processSheet('rule', a.rules, b?.rules ?? null, itemKey.rule, itemDisc.rule);
 
 	// Cross-rule contradictions.
 	const conflicts = ruleConflicts(items.filter((i) => i.sheet === 'rule').map((i) => i.final as RuleItem));

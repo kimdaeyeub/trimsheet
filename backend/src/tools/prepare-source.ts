@@ -53,7 +53,9 @@ export const prepareSource = defineTool({
 			brand: brandFromLabel(src.brand),
 			modelYear: src.modelYear || null,
 			filename: src.filename,
-			coverText: rawPages[0]?.text ?? '',
+			// Genesis puts the date on p.2 (p.1 is a photo cover), so read the first two pages.
+			coverText: rawPages.slice(0, 2).map((p) => p.text).join('\n'),
+			firstSeen: src.fetchedAt || isoNow(),
 		});
 		if (id.vehicleKey) {
 			const d = await checkVehicle(repo, id, { sha256: src.sha256, force });

@@ -95,7 +95,14 @@ async function evaluate(deps: ScanDeps, ref: PdfRef, registry: RegisteredVehicle
 		return { sha256, sourceId, filename: dl.filename, coverText: cover.map((p) => p.text).join('\n').slice(0, 4000) };
 	});
 
-	const id = identify({ brand: ref.brand, name: ref.vehicleName, filename: saved.filename, coverText: saved.coverText, now: deps.now });
+	const id = identify({
+		brand: ref.brand,
+		name: ref.vehicleName,
+		filename: saved.filename,
+		coverText: saved.coverText,
+		firstSeen: (deps.now ?? new Date()).toISOString(),
+		now: deps.now,
+	});
 	const decision = decide(
 		{ familyKey: id.familyKey, vehicleKey: id.vehicleKey, modelYear: id.modelYear, effectiveDate: id.effectiveDate, sha256: saved.sha256, baselineMode: mode === 'baseline' },
 		registry,

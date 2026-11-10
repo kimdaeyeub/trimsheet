@@ -20,3 +20,7 @@ dist-ssr/
 *.log
 .DS_Store
 .idea/
+
+# Manufacturer PDFs and data derived from them stay local (copyrighted material)
+backend/fixtures/pdf/
+backend/fixtures/golden/

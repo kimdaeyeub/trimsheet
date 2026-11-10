@@ -103,8 +103,10 @@ export const extractPass = defineTool({
 			const id = identify({
 				brand: ex.document.brand ?? vehicle?.brand ?? null,
 				name: ex.document.vehicleName ?? vehicle?.name ?? null,
-				modelYear: ex.document.modelYear ?? vehicle?.modelYear ?? null,
+				// Only an explicitly stated year is carried over; an inferred one is re-derived below.
+				modelYear: ex.document.modelYear ?? (vehicle?.modelYearSource === 'stated' ? vehicle.modelYear : null),
 				effectiveDate: ex.document.effectiveDate ?? vehicle?.effectiveDate ?? null,
+				firstSeen: state.createdAt,
 			});
 			vehicle = { ...id };
 			const d = await checkVehicle(repo, id, { sha256: state.sha256, force: state.force, ownJobId: jobId });

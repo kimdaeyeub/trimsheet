@@ -90,7 +90,7 @@ describe('scanBrand', () => {
 		expect((await repo.listConversations())[0].title).toBe('EV2 (자동 수집)');
 	});
 
-	it('processes a new model year of a known vehicle and holds unknown years', async () => {
+	it('processes a new model year of a known vehicle and infers a missing year', async () => {
 		site.set('ev3', 'EV3', 'EV3 2026 MY price list');
 		await scanBrand(deps, 'kia', 'baseline');
 		site.set('ev3', 'EV3', 'EV3 2027 MY price list', 'e2'); // same URL, new file
@@ -98,8 +98,9 @@ describe('scanBrand', () => {
 		const s = await scanBrand(deps, 'kia', 'normal');
 		const by = Object.fromEntries(s.items.map((i) => [i.vehicleName, i.decision]));
 		expect(by.EV3).toMatchObject({ action: 'process', rule: 'R6' });
-		expect(by.Ray).toMatchObject({ action: 'hold', rule: 'R9' });
-		expect((await repo.listVehicles()).find((v) => v.vehicleName === 'Ray')?.status).toBe('보류');
+		// No "20XX년형" on the cover (true of every real 2026-11 sample): the year is inferred, not held.
+		expect(by.Ray).toMatchObject({ action: 'process', rule: 'R8' });
+		expect(s.items.find((i) => i.vehicleName === 'Ray')?.identity?.modelYear).toMatch(/^20\d{2}$/);
 	});
 
 	it('holds everything when too many vehicles would be processed at once', async () => {

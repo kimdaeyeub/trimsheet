@@ -31,15 +31,29 @@ export function parseModelYear(texts: readonly (string | null | undefined)[], no
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** "2026년 11월 1일 기준" / "2026.11.01 기준" / "2026-11-01 시행" → "2026-11-01". Requires a 기준/시행/적용 cue. */
+const DATE = String.raw`((?:20)?\d{2})\s*(?:년|[.\-/])\s*(\d{1,2})\s*(?:월|[.\-/])\s*(\d{1,2})\s*일?`;
+const EFFECTIVE_DATE_PATTERNS: RegExp[] = [
+	// "2026년 11월 1일 기준", "2026.11.01 시행", "26년 4월 23일 기준", "2026년 11월 1일, 개별 소비세 5% 기준"
+	new RegExp(`(?<!\\d)${DATE}\\s*(?:부터\\s*)?(?:[^\\n|]{0,20}?(?:기준|시행|적용)|부(?=[\\s)]|$))`, 'g'),
+	// "현 모델 출시일 : 26년 4월 23일"
+	new RegExp(`(?:출시일|기준일|시행일)\\s*[:：]?\\s*${DATE}`, 'g'),
+];
+
+/**
+ * Price-sheet date → "YYYY-MM-DD". Needs a cue: 기준/시행/적용 after the date (up to ~20 chars later,
+ * e.g. "2026년 11월 1일, 개별 소비세 5% 기준") or 출시일/기준일 before it. Two-digit years mean 20YY.
+ */
 export function parseEffectiveDate(texts: readonly (string | null | undefined)[]): string | null {
-	const re =
-		/(20\d{2})\s*(?:년|[.\-/])\s*(\d{1,2})\s*(?:월|[.\-/])\s*(\d{1,2})\s*일?\s*(?:부터\s*)?(?:기준|시행|적용|부)/g;
 	for (const raw of texts) {
 		if (!raw) continue;
-		for (const m of raw.normalize('NFKC').matchAll(re)) {
-			const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-			if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return `${y}-${pad(mo)}-${pad(d)}`;
+		const text = raw.normalize('NFKC');
+		for (const re of EFFECTIVE_DATE_PATTERNS) {
+			for (const m of text.matchAll(re)) {
+				let y = Number(m[1]);
+				if (y < 100) y += 2000;
+				const [mo, d] = [Number(m[2]), Number(m[3])];
+				if (y >= 2000 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return `${y}-${pad(mo)}-${pad(d)}`;
+			}
 		}
 	}
 	return null;
@@ -120,6 +134,12 @@ export interface VehicleIdentity {
 	brand: Brand | null;
 	name: string | null;
 	modelYear: string | null;
+	/**
+	 * Where modelYear came from. Real price sheets often have no "20XX년형" (none of the 2026-11
+	 * Hyundai/Kia/Genesis samples did), so the year falls back to the price-sheet date, then to the
+	 * date the file was first seen. Only 'stated' is an explicit model year.
+	 */
+	modelYearSource: 'stated' | 'effective_date' | 'first_seen' | null;
 	effectiveDate: string | null;
 	familyKey: string | null;
 	vehicleKey: string | null;
@@ -137,18 +157,29 @@ export function identify(input: {
 	filename?: string | null;
 	label?: string | null;
 	coverText?: string | null;
+	/** ISO date the file was first seen (download/upload). Last-resort model-year source. */
+	firstSeen?: string | null;
 	now?: Date;
 }): VehicleIdentity {
 	const texts = [input.name, input.label, input.filename, input.coverText];
 	const brand = input.brand ?? guessBrand(texts);
 	const name = input.name ?? input.label ?? null;
-	const modelYear = input.modelYear ?? parseModelYear(texts, input.now);
 	const effectiveDate = input.effectiveDate ?? parseEffectiveDate([input.coverText, input.label]);
+	const stated = input.modelYear ?? parseModelYear(texts, input.now);
+	const fromFirstSeen = input.firstSeen ? /^(20\d{2})-/.exec(input.firstSeen)?.[1] ?? null : null;
+	const [modelYear, modelYearSource]: [string | null, VehicleIdentity['modelYearSource']] = stated
+		? [stated, 'stated']
+		: effectiveDate
+			? [effectiveDate.slice(0, 4), 'effective_date']
+			: fromFirstSeen
+				? [fromFirstSeen, 'first_seen']
+				: [null, null];
 	const fam = brand && name ? familyKey(brand, name) : null;
 	return {
 		brand,
 		name,
 		modelYear,
+		modelYearSource,
 		effectiveDate,
 		familyKey: fam,
 		vehicleKey: fam && modelYear ? vehicleKey(fam, modelYear) : null,

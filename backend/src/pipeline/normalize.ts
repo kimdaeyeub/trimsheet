@@ -44,3 +44,32 @@ export const itemKey = {
 	rule: (r: { type: string; subject: string; targets: readonly string[] }) =>
 		`${r.type}|${normName(r.subject)}|${r.targets.map(normName).sort().join(',')}`,
 };
+
+/**
+ * Second key part, used only when a name repeats within one list: the same option at a different
+ * price per trim (스타리아 내비플러스 110만/105만), or the same colour name under two codes (G80 비크 블랙
+ * PH3/NXX). Unique names keep the plain key so a misread price still pairs up as a PASS_MISMATCH.
+ */
+export const itemDisc = {
+	trim: (t: { price: number | null }) => String(t.price ?? ''),
+	color: (c: { code: string | null }) => normName(c.code ?? ''),
+	option: (o: { price: number | null }) => String(o.price ?? ''),
+	rule: () => '',
+};
+
+/** Keys for one or more lists of the same sheet, disambiguating names that repeat in any list. */
+export function keysFor<T>(lists: readonly (readonly T[])[], key: (i: T) => string, disc: (i: T) => string): (i: T) => string {
+	const repeated = new Set<string>();
+	for (const list of lists) {
+		const seen = new Set<string>();
+		for (const it of list) {
+			const k = key(it);
+			if (seen.has(k)) repeated.add(k);
+			seen.add(k);
+		}
+	}
+	return (i) => {
+		const k = key(i);
+		return repeated.has(k) ? `${k}|${disc(i)}` : k;
+	};
+}

@@ -36,7 +36,7 @@ export class GoogleSheetsPort implements SheetsPort {
 	private tabCache: TabInfo[] | null = null;
 
 	constructor(private readonly opts: GoogleSheetsOptions) {
-		this.fetcher = opts.fetcher ?? fetch;
+		this.fetcher = opts.fetcher ?? ((input, init) => fetch(input, init));
 		this.maxRetries = opts.maxRetries ?? 3;
 		this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
 	}
