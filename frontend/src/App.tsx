@@ -1,20 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink, Mail, TriangleAlert } from 'lucide-react'
+import { Mail, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { VehicleBrowser } from './components/catalog/VehicleBrowser'
 import { Logo } from './components/layout/Logo'
 import { TryNewVehicleButton } from './components/demo/TryNewVehicle'
 import { EmailNotifyModal } from './components/notify/EmailNotifyModal'
 import { Button } from './components/ui/Button'
-import { buttonClass } from './components/ui/button-styles'
 import { api } from './lib/api'
 import { qk } from './lib/query'
 
 export function App() {
   const health = useQuery({ queryKey: qk.health, queryFn: api.health, staleTime: 5 * 60_000 })
-  const settings = useQuery({ queryKey: qk.settings, queryFn: api.settings, staleTime: 5 * 60_000 })
-  const sheetUrl = settings.data?.spreadsheetUrl
   const [notifyOpen, setNotifyOpen] = useState(false)
+  // Hidden until mail can actually be sent (NOTIFY_FROM + EMAIL binding); appears on its own after setup.
+  const notify = useQuery({ queryKey: qk.notify, queryFn: api.notify, staleTime: 5 * 60_000 })
+  const emailReady = notify.data?.sending === 'ready'
 
   return (
     <div className="flex min-h-full flex-col">
@@ -25,15 +25,11 @@ export function App() {
           </a>
           <div className="flex items-center gap-2">
             <TryNewVehicleButton />
-            <Button variant="secondary" size="sm" onClick={() => setNotifyOpen(true)} aria-haspopup="dialog" aria-label="이메일 알림" className="whitespace-nowrap">
-              <Mail className="size-3.5" aria-hidden />
-              <span className="hidden sm:inline">이메일 알림</span>
-            </Button>
-            {sheetUrl && (
-              <a href={sheetUrl} target="_blank" rel="noreferrer" aria-label="구글 시트 열기" className={buttonClass('secondary', 'sm', 'whitespace-nowrap')}>
-                <span className="hidden sm:inline">구글 시트 열기</span>
-                <ExternalLink className="size-3.5" aria-hidden />
-              </a>
+            {emailReady && (
+              <Button variant="secondary" size="sm" onClick={() => setNotifyOpen(true)} aria-haspopup="dialog" aria-label="이메일 알림" className="whitespace-nowrap">
+                <Mail className="size-3.5" aria-hidden />
+                <span className="hidden sm:inline">이메일 알림</span>
+              </Button>
             )}
           </div>
         </div>

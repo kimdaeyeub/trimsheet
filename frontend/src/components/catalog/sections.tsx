@@ -1,22 +1,31 @@
 import type { CatalogColor, CatalogOption, CatalogRule, CatalogTrim } from '@shared/types'
 import { ArrowRight } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 import { formatWon, splitList } from '../../lib/format'
 import { Badge, type Tone } from '../ui/Badge'
-
-const needsReview = (status: string) => status === '확인 필요'
+import { PdfUrlContext } from './pdf-context'
 
 function Empty({ children }: { children: ReactNode }) {
   return <p className="py-10 text-center text-sm text-gray-500">{children}</p>
 }
 
-function ReviewMark({ status }: { status: string }) {
-  return needsReview(status) ? <Badge tone="warning">확인 필요</Badge> : null
-}
-
+/** "p.3" — a link to that page of the original PDF when the PDF is stored. */
 function Page({ page }: { page: string }) {
-  return page ? <span className="text-xs text-gray-400 tabular-nums">p.{page}</span> : null
+  const pdfUrl = useContext(PdfUrlContext)
+  if (!page) return null
+  if (!pdfUrl) return <span className="text-xs text-gray-400 tabular-nums">p.{page}</span>
+  return (
+    <a
+      href={`${pdfUrl}#page=${encodeURIComponent(page)}`}
+      target="_blank"
+      rel="noreferrer"
+      title={`원문 PDF ${page}쪽 열기`}
+      className="rounded text-xs whitespace-nowrap text-primary-600 tabular-nums underline-offset-2 hover:underline"
+    >
+      p.{page}
+    </a>
+  )
 }
 
 /** "전 트림" when the list names every trim; otherwise chips. */
@@ -48,8 +57,6 @@ function Table({ head, children }: { head: ReactNode; children: ReactNode }) {
   )
 }
 
-const rowCls = (status: string) => cn(needsReview(status) && 'bg-warning-50/60')
-
 export function TrimsSection({ trims }: { trims: CatalogTrim[] }) {
   if (trims.length === 0) return <Empty>정리된 트림이 없습니다.</Empty>
   return (
@@ -64,11 +71,10 @@ export function TrimsSection({ trims }: { trims: CatalogTrim[] }) {
       }
     >
       {trims.map((t, i) => (
-        <tr key={`${t.name}-${i}`} className={rowCls(t.status)}>
+        <tr key={`${t.name}-${i}`}>
           <td className={cn(td, 'font-medium text-gray-900')}>
             <div className="flex flex-wrap items-center gap-1.5">
               {t.name}
-              <ReviewMark status={t.status} />
             </div>
             {t.powertrain && <p className="mt-0.5 text-xs font-normal text-gray-500">{t.powertrain}</p>}
           </td>
@@ -97,11 +103,10 @@ export function OptionsSection({ options, allTrims }: { options: CatalogOption[]
       }
     >
       {options.map((o, i) => (
-        <tr key={`${o.name}-${i}`} className={rowCls(o.status)}>
+        <tr key={`${o.name}-${i}`}>
           <td className={cn(td, 'max-w-[280px]')}>
             <div className="flex flex-wrap items-center gap-1.5 font-medium text-gray-900">
               {o.name}
-              <ReviewMark status={o.status} />
             </div>
             {o.includes && <p className="mt-0.5 line-clamp-2 text-xs text-gray-500" title={o.includes}>{o.includes}</p>}
           </td>
@@ -134,7 +139,7 @@ export function ColorsSection({ colors, allTrims }: { colors: CatalogColor[]; al
             </h3>
             <ul className="grid gap-2 sm:grid-cols-2">
               {g.items.map((c, i) => (
-                <li key={`${c.name}-${c.code}-${i}`} className={cn('flex gap-3 rounded-lg border border-gray-200 p-3', needsReview(c.status) && 'border-warning-500/40 bg-warning-50/60')}>
+                <li key={`${c.name}-${c.code}-${i}`} className="flex gap-3 rounded-lg border border-gray-200 p-3">
                   <span
                     aria-hidden
                     className="size-10 shrink-0 rounded-full border border-black/10 shadow-inner"
@@ -145,7 +150,6 @@ export function ColorsSection({ colors, allTrims }: { colors: CatalogColor[]; al
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="font-medium text-gray-900">{c.name}</p>
                       {c.code && <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{c.code}</code>}
-                      <ReviewMark status={c.status} />
                     </div>
                     <div className="mt-1.5">
                       <TrimChips value={c.applicableTrims} allTrims={allTrims} />
@@ -175,11 +179,10 @@ export function RulesSection({ rules }: { rules: CatalogRule[] }) {
   return (
     <ul className="flex flex-col gap-2">
       {rules.map((r, i) => (
-        <li key={`${r.subject}-${i}`} className={cn('rounded-lg border border-gray-200 p-3', needsReview(r.status) && 'border-warning-500/40 bg-warning-50/60')}>
+        <li key={`${r.subject}-${i}`} className="rounded-lg border border-gray-200 p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={RULE_TONE[r.type] ?? 'neutral'}>{r.type || '기타'}</Badge>
             {RULE_HINT[r.type] && <span className="text-xs text-gray-500">{RULE_HINT[r.type]}</span>}
-            <ReviewMark status={r.status} />
             <span className="ml-auto">
               <Page page={r.page} />
             </span>

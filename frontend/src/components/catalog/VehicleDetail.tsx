@@ -6,12 +6,12 @@ import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
 import { formatKstDate, formatPriceRange } from '../../lib/format'
 import { qk } from '../../lib/query'
-import { Badge } from '../ui/Badge'
 import { buttonClass } from '../ui/button-styles'
 import { Card } from '../ui/Card'
 import { ErrorNotice } from '../ui/ErrorNotice'
 import { Spinner } from '../ui/Spinner'
 import { BrandMark } from './BrandMark'
+import { PdfUrlContext } from './pdf-context'
 import { ColorsSection, OptionsSection, RulesSection, TrimsSection } from './sections'
 
 type Tab = 'trims' | 'options' | 'colors' | 'rules'
@@ -54,9 +54,9 @@ function Detail({ v }: { v: CatalogDetail }) {
           </div>
           <div className="flex flex-wrap gap-2">
             {v.pdfUrl && (
-              <a href={v.pdfUrl} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'sm')}>
+              <a href={v.pdfUrl} target="_blank" rel="noreferrer" className={buttonClass('primary', 'sm')}>
                 <FileText className="size-3.5" aria-hidden />
-                가격표 PDF
+                원문 PDF
               </a>
             )}
             {v.sourceUrl && (
@@ -81,14 +81,6 @@ function Detail({ v }: { v: CatalogDetail }) {
             </div>
           )}
         </dl>
-        {v.reviewCount > 0 && (
-          <p className="mt-3 rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700">
-            <Badge tone="warning" className="mr-1.5">
-              확인 필요
-            </Badge>
-            {v.reviewCount}개 항목은 AI가 확신하지 못해 사람 확인이 필요합니다. 표에 노란색으로 표시했습니다.
-          </p>
-        )}
       </div>
 
       <div role="tablist" aria-label="정보 종류" className="flex gap-1 overflow-x-auto border-b border-gray-100 px-3 [scrollbar-width:none]">
@@ -113,10 +105,12 @@ function Detail({ v }: { v: CatalogDetail }) {
       </div>
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="p-5">
-        {tab === 'trims' && <TrimsSection trims={v.trims} />}
-        {tab === 'options' && <OptionsSection options={v.options} allTrims={allTrims} />}
-        {tab === 'colors' && <ColorsSection colors={v.colors} allTrims={allTrims} />}
-        {tab === 'rules' && <RulesSection rules={v.rules} />}
+        <PdfUrlContext value={v.pdfUrl}>
+          {tab === 'trims' && <TrimsSection trims={v.trims} />}
+          {tab === 'options' && <OptionsSection options={v.options} allTrims={allTrims} />}
+          {tab === 'colors' && <ColorsSection colors={v.colors} allTrims={allTrims} />}
+          {tab === 'rules' && <RulesSection rules={v.rules} />}
+        </PdfUrlContext>
       </div>
     </Card>
   )

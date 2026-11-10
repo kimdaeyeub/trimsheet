@@ -2,7 +2,6 @@ import type { CatalogSummary } from '@shared/types'
 import { ChevronRight } from 'lucide-react'
 import { formatPriceRange } from '../../lib/format'
 import { cn } from '../../lib/cn'
-import { Badge } from '../ui/Badge'
 import { BrandMark } from './BrandMark'
 
 export function VehicleCard({ vehicle: v, selected, onSelect }: { vehicle: CatalogSummary; selected: boolean; onSelect: () => void }) {
@@ -28,7 +27,6 @@ export function VehicleCard({ vehicle: v, selected, onSelect }: { vehicle: Catal
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
-        {v.reviewCount > 0 && <Badge tone="warning">확인 {v.reviewCount}</Badge>}
         <ChevronRight className={cn('size-4 text-gray-300 group-hover:text-primary-400', selected && 'text-primary-500')} aria-hidden />
       </div>
     </button>

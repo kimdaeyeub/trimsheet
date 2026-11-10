@@ -2,9 +2,13 @@
 // or removes them again. Rows get jobId `golden_<n>` and status 확인 필요 so they are never
 // mistaken for processed data. Does not touch the 차량 tab, so duplicate detection is unaffected.
 //
-//   npx tsx scripts/golden-to-sheet.ts add <csv-dir> [hex.json]
+//   npx tsx scripts/golden-to-sheet.ts add <csv-dir> [hex.json] [--pdf-dir <dir>]
+//     --pdf-dir: also put each vehicle's PDF into the LOCAL dev R2 (wrangler --local) and link it,
+//     so the app's "원문 PDF" button and page links work for the drafts.
 //     hex.json: { "<차종>": { "<색상명>|<코드>": "#RRGGBB" } } — e.g. from the PDF chip extractor
 //   npx tsx scripts/golden-to-sheet.ts remove
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseCsv } from '../src/eval/golden.ts';
@@ -15,6 +19,7 @@ import { toCells, toRecords } from '../src/sheets/rows.ts';
 const PREFIX = 'golden_';
 const BRAND: Record<string, string> = { 'G80': '제네시스', '쏘렌토': '기아', '더 뉴 스타리아 Electric': '현대' };
 const EFFECTIVE: Record<string, string> = { 'G80': '2026-11-01', '더 뉴 스타리아 Electric': '2026-04-23' };
+const PDF_FILE: Record<string, string> = { 'G80': 'genesis-g80.pdf', '쏘렌토': 'kia-sorento.pdf', '더 뉴 스타리아 Electric': 'hyundai-the-new-staria-electric.pdf' };
 
 function loadEnv(path: string) {
 	const env: Record<string, string> = {};
@@ -29,7 +34,21 @@ const env = loadEnv(join(import.meta.dirname, '..', '.env'));
 const repo = getRepo(env);
 if (repo.port.kind !== 'google') throw new Error('backend/.env에 Google Sheets 설정이 없습니다.');
 
-const [cmd, dir, hexFile] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const pdfFlag = argv.indexOf('--pdf-dir');
+const pdfDir = pdfFlag >= 0 ? argv.splice(pdfFlag, 2)[1] : null;
+const [cmd, dir, hexFile] = argv;
+
+/** Upload to the local dev R2 (same store the backend dev server uses) and return the pdfKey. */
+function putLocalPdf(path: string): string {
+	const sha = createHash('sha256').update(readFileSync(path)).digest('hex');
+	const key = `pdf/${sha}.pdf`;
+	execFileSync('npx', ['wrangler', 'r2', 'object', 'put', `trimsheet-files/${key}`, '--file', path, '--content-type', 'application/pdf', '--local'], {
+		cwd: join(import.meta.dirname, '..'),
+		stdio: 'ignore',
+	});
+	return key;
+}
 const hexes: Record<string, Record<string, string>> = hexFile ? JSON.parse(readFileSync(hexFile, 'utf8')) : {};
 const now = new Date(Date.now() + 9 * 3600_000).toISOString().replace('T', ' ').slice(0, 19);
 const ITEM_TABS = [TABS.trim, TABS.color, TABS.option, TABS.rule, TABS.job] as TabSpec[];
@@ -73,7 +92,9 @@ if (cmd === 'remove') {
 		);
 		await put(TABS.option as TabSpec, mine(csv.option).map((r, i) => ({ ...head(i, 'o'), name: r['옵션명'], price: Number(r['가격(원)']), applicableTrims: r['적용 트림'], evidencePage: page(r['근거 페이지']), ...tail })));
 		await put(TABS.rule as TabSpec, mine(csv.rule).map((r, i) => ({ ...head(i, 'r'), type: r['유형'], subject: r['대상 옵션'], targets: r['관련 항목'], condition: r['조건'], result: r['결과'], footnoteText: r['원문 각주'], evidencePage: page(r['근거 페이지']), ...tail })));
-		await repo.createJobRow({ jobId, brand: BRAND[name] ?? '', vehicleName: name, modelYear: '2026', effectiveDate: EFFECTIVE[name] ?? '', stage: 'done', outcome: '정답 초안' });
+		const pdfPath = pdfDir && PDF_FILE[name] ? join(pdfDir, PDF_FILE[name]) : null;
+		const pdfKey = pdfPath && existsSync(pdfPath) ? putLocalPdf(pdfPath) : '';
+		await repo.createJobRow({ jobId, brand: BRAND[name] ?? '', vehicleName: name, modelYear: '2026', effectiveDate: EFFECTIVE[name] ?? '', stage: 'done', outcome: '정답 초안', pdfKey, filename: PDF_FILE[name] ?? '' });
 		console.log(`${name}: ${jobId}`);
 	}
 	// Paint the 미리보기 cells, as the real result writer does.
