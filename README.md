@@ -46,10 +46,9 @@ cd backend && npm install && cd ../frontend && npm install
 
 | 변수 | 설명 |
 | --- | --- |
+| `GOOGLE_SPREADSHEET_ID` | 결과를 올릴 스프레드시트 ID (URL의 `/d/<ID>/`) |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` | 서비스 계정 ([docs/google-sheets-setup.md](docs/google-sheets-setup.md)) |
 | `OPENAI_API_KEY` | 선택. 스캔본 등 GLM이 못 읽는 PDF용 |
-
-스프레드시트 ID는 `backend/wrangler.jsonc`의 `vars.GOOGLE_SPREADSHEET_ID`에 넣습니다.
 
 터미널 두 개에서 각각 실행합니다.
 

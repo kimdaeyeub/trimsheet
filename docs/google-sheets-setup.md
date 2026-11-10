@@ -68,11 +68,14 @@ GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...여러 줄...\n-----END 
 node -e 'const k=require(process.argv[1]);console.log("GOOGLE_SERVICE_ACCOUNT_EMAIL="+k.client_email);console.log("GOOGLE_PRIVATE_KEY="+JSON.stringify(k.private_key))' /경로/키파일.json
 ```
 
-### 6-2. `backend/wrangler.jsonc` (비밀값 아님)
+### 6-2. 스프레드시트 ID도 `backend/.env`에
 
-```jsonc
-"vars": { "GOOGLE_SPREADSHEET_ID": "1AbCdEf...xyz" },
+```bash
+# backend/.env
+GOOGLE_SPREADSHEET_ID=1AbCdEf...xyz
 ```
+
+> 저장소가 공개라서 ID를 `wrangler.jsonc`(커밋되는 파일)에 넣지 않습니다. ID만으로는 시트에 접근할 수 없지만, 공개할 이유도 없습니다.
 
 ### 6-3. 확인
 
@@ -97,6 +100,10 @@ cd backend && npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL
 cd backend && npx wrangler secret put GOOGLE_PRIVATE_KEY
 ```
 
+```bash
+cd backend && npx wrangler secret put GOOGLE_SPREADSHEET_ID
+```
+
 `GOOGLE_PRIVATE_KEY` 프롬프트에는 `-----BEGIN PRIVATE KEY-----`부터 `-----END PRIVATE KEY-----`까지 붙여 넣습니다(`\n` 형태든 실제 줄바꿈이든 앱이 둘 다 처리합니다).
 
 ---
@@ -108,8 +115,8 @@ cd backend && npx wrangler secret put GOOGLE_PRIVATE_KEY
 | `403 The caller does not have permission` | 스프레드시트를 서비스 계정 이메일과 **편집자**로 공유하지 않음 |
 | `403 Google Sheets API has not been used in project` | 2단계(API 사용 설정)를 안 했거나, 키를 다른 프로젝트에서 발급함 |
 | `invalid_grant` / `Invalid JWT Signature` | `GOOGLE_PRIVATE_KEY` 붙여 넣기 오류(따옴표 누락, 일부만 복사). 6-1의 명령으로 다시 출력해서 넣기 |
-| `404 Requested entity was not found` | `GOOGLE_SPREADSHEET_ID` 오타 |
-| 탭이 생기지 않음 | dev 서버를 재시작하지 않음(`.env`·`wrangler.jsonc`는 시작할 때 읽힘) |
+| `404 Requested entity was not found` | `GOOGLE_SPREADSHEET_ID` 오타 (URL의 `/d/`와 `/edit` 사이 값만) |
+| 탭이 생기지 않음 | dev 서버를 재시작하지 않음(`.env`는 시작할 때 읽힘) |
 
 ## 비용
 

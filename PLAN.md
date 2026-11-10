@@ -1241,6 +1241,7 @@ export const SCAN_POLICY = {
 | 2026-11-10 | 7.1(실제 제조사 PDF의 칩 형태 확인)은 데이터 준비 후 마지막에 | 사용자 요청 |
 | 2026-11-10 | Phase 8은 평가·배포 **도구와 문서**까지, 실제 확인·배포는 **Phase 9**로 분리 | 사용자 요청(데이터는 Phase 8 직후 제공) |
 | 2026-11-10 | 백엔드 `workers_dev: false`·`preview_urls: false` | 공개 URL 없이 서비스 바인딩으로만 접근(비용·보안) |
+| 2026-11-10 | `GOOGLE_SPREADSHEET_ID`를 `wrangler.jsonc` vars에서 빼고 `.env`/`wrangler secret`으로 | 공개 저장소에 시트 ID를 남기지 않음 |
 | (미정) | Pass B를 OpenAI로 고정할지 | Phase 8 정확도 결과를 보고 사용자가 결정 |
 |  |  |  |
 

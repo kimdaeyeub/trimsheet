@@ -119,7 +119,7 @@ Phase 0~8의 **코드·도구·문서는 모두 작성·테스트되었고 GitHu
 | 우선순위 | 항목 | 방법 | 필요한 단계 |
 | --- | --- | --- | --- |
 | 1 | **실제 가격표 PDF** (예: 더 뉴 스타리아 Electric) 1개 이상 | `backend/fixtures/pdf/`에 넣기. 같은 차종의 이전 연식 PDF가 있으면 함께 | Phase 2·3·4·7 실제 확인 |
-| 2 | **Google Sheets 연결** | [docs/google-sheets-setup.md](docs/google-sheets-setup.md) 순서대로 → `backend/.env`에 `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` / `backend/wrangler.jsonc`의 `vars.GOOGLE_SPREADSHEET_ID` | 1.8 및 결과 저장 전체 |
+| 2 | **Google Sheets 연결** | ✅ 서비스 계정 이메일·스프레드시트 ID 입력 완료(`backend/.env`) · ⏳ **`GOOGLE_PRIVATE_KEY`(JSON 키의 `private_key`)만 남음** — [docs/google-sheets-setup.md](docs/google-sheets-setup.md) 6-1 | 9.1 및 결과 저장 전체 |
 | 3 | **OpenAI API 키** (선택) | `backend/.env`의 `OPENAI_API_KEY`. 없으면 스캔본 PDF는 처리하지 않고, GLM 품질이 낮아도 폴백하지 않음 | 폴백 |
 | 4 | **R2 활성화** | Cloudflare 대시보드 → R2 메뉴에서 활성화(결제 수단 등록이 필요할 수 있음). 활성화 후 알려 주시면 버킷 `trimsheet-files` 생성 | 0.5, 배포 |
 | 5 | **정답 데이터 3종** | 사람이 직접 정리한 차종 3개의 결과. Google Sheets의 `트림`·`색상`·`선택품목`·`옵션규칙` 탭과 같은 열 구성으로 만들어 CSV로 내려받기(`차종` 열로 구분) → `npm run golden`으로 변환 | 9.10 정확도 평가 |

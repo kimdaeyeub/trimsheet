@@ -28,12 +28,16 @@ cd backend && npx wrangler secret put GOOGLE_PRIVATE_KEY
 ```
 
 ```bash
+cd backend && npx wrangler secret put GOOGLE_SPREADSHEET_ID
+```
+
+```bash
 cd backend && npx wrangler secret put OPENAI_API_KEY
 ```
 
 (`OPENAI_API_KEY`는 선택 — 없으면 스캔본 PDF는 처리하지 않고 GLM 결과를 그대로 씁니다.)
 
-5. **스프레드시트 ID** — `backend/wrangler.jsonc`의 `"vars": { "GOOGLE_SPREADSHEET_ID": "<ID>" }` 입력 ([google-sheets-setup.md](google-sheets-setup.md) 5단계)
+5. **스프레드시트 ID** — 위 `GOOGLE_SPREADSHEET_ID` 비밀값으로 등록합니다(저장소가 공개라 설정 파일에 넣지 않음).
 
 ## 2. 배포
 

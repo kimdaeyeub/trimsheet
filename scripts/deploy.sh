@@ -12,11 +12,10 @@ echo "▶ checks"
 (cd backend && npx wrangler r2 bucket list | grep -q 'trimsheet-files') || {
   echo "R2 bucket 'trimsheet-files' not found. Enable R2 in the dashboard, then: (cd backend && npx wrangler r2 bucket create trimsheet-files)"; exit 1; }
 SECRETS=$(cd backend && npx wrangler secret list --name trimsheet-backend 2>/dev/null || echo '[]')
-for s in GOOGLE_SERVICE_ACCOUNT_EMAIL GOOGLE_PRIVATE_KEY; do
+for s in GOOGLE_SPREADSHEET_ID GOOGLE_SERVICE_ACCOUNT_EMAIL GOOGLE_PRIVATE_KEY; do
   echo "$SECRETS" | grep -q "\"$s\"" || echo "⚠️  secret $s is not set — run: (cd backend && npx wrangler secret put $s)"
 done
 echo "$SECRETS" | grep -q '"OPENAI_API_KEY"' || echo "ℹ️  OPENAI_API_KEY not set — OpenAI fallback disabled (optional)"
-if grep -q '"GOOGLE_SPREADSHEET_ID": ""' backend/wrangler.jsonc; then echo "⚠️  vars.GOOGLE_SPREADSHEET_ID is empty in backend/wrangler.jsonc"; fi
 
 echo "▶ tests"
 (cd backend && npm run check:types && npm test)
