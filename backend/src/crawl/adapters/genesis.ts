@@ -2,7 +2,7 @@
 // a file key; older files of the same model stay listed, so keep the newest per slug.
 // Evidence: docs/site-notes.md (제네시스).
 import { genesisPdfUrl } from '../fetch-pdf.ts';
-import type { ListResult, PdfRef } from '../types.ts';
+import { CRAWLER_HEADERS, type ListResult, type PdfRef } from '../types.ts';
 
 export const GENESIS = {
 	pageUrl: 'https://www.genesis.com/kr/ko/support/download-center/genesis-models.html',
@@ -39,7 +39,7 @@ export function parseGenesisHtml(html: string): ListResult {
 }
 
 export async function listGenesis(signal?: AbortSignal): Promise<ListResult> {
-	const res = await fetch(GENESIS.pageUrl, { signal, headers: { 'accept-language': 'ko-KR,ko;q=0.9' } });
+	const res = await fetch(GENESIS.pageUrl, { signal, headers: CRAWLER_HEADERS });
 	if (!res.ok) return { refs: [], skipped: [], failure: `접속 실패 (HTTP ${res.status})` };
 	const result = parseGenesisHtml(await res.text());
 	if (result.refs.length === 0) return { ...result, failure: '사이트 구조 변경 의심 (제네시스 다운로드 센터에서 가격표를 찾지 못함)' };

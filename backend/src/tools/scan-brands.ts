@@ -7,6 +7,7 @@ import { newId } from '../shared/ids.ts';
 import { startTrimSheetJob } from '../shared/dispatch.ts';
 import { putJson } from '../store/r2.ts';
 import { deps } from './common.ts';
+import { durable } from '../shared/durable.ts';
 
 const BRANDS: Brand[] = ['hyundai', 'kia', 'genesis'];
 
@@ -43,7 +44,7 @@ export const scanBrands = defineTool({
 			repo,
 			bucket,
 			startJob: startTrimSheetJob,
-			step: <T>(name: string, fn: () => Promise<T>) => step.do(name, fn),
+			step: <T>(name: string, fn: () => Promise<T>) => durable(step)(name, fn),
 		};
 
 		const summaries: ScanSummary[] = [];
@@ -52,7 +53,7 @@ export const scanBrands = defineTool({
 			try {
 				const s = await scanBrand(scanDeps, brand, data.mode);
 				summaries.push(s);
-				await step.do(`save:${brand}`, () => putJson(bucket, `scans/${data.scanRunId}/${brand}.json`, s));
+				await durable(step)(`save:${brand}`, () => putJson(bucket, `scans/${data.scanRunId}/${brand}.json`, s));
 			} catch (err) {
 				summaries.push({
 					brand,
@@ -69,7 +70,7 @@ export const scanBrands = defineTool({
 		}
 
 		const summary = summarizeScan(summaries);
-		await step.do('finish', async () => {
+		await durable(step)('finish', async () => {
 			await repo.finishScanRun(data.scanRunId, {
 				candidateCount: summary.counts.listed,
 				processCount: summary.counts.process,

@@ -11,6 +11,7 @@ import { log as jlog } from '../shared/log.ts';
 import { acquireVehicleLock, getJson, getPdfBytes, keys, putJson, releaseVehicleLock } from '../store/r2.ts';
 import { deps, jobUrl, loadState, next, requireStage, updateState } from './common.ts';
 import { checkVehicle, outcomeFor } from './dedup-check.ts';
+import { durable } from '../shared/durable.ts';
 
 type Pages = { page: number; text: string }[];
 
@@ -35,12 +36,12 @@ export const extractPass = defineTool({
 		]);
 		if (!rawPages || !layoutPages || !state.pageMap) throw new AppError('missing_text', '페이지 텍스트가 없습니다. prepare_source부터 다시 실행하세요.');
 
-		await step.do(`note:${pass}`, () => updateState(bucket, jobId, (s) => ({ ...s, progressNote: `${pass === 'A' ? '1' : '2'}차 추출 중…` })));
+		await durable(step)(`note:${pass}`, () => updateState(bucket, jobId, (s) => ({ ...s, progressNote: `${pass === 'A' ? '1' : '2'}차 추출 중…` })));
 
 		// Each model call is one durable step; its (possibly large) result goes to R2, the step keeps only cost.
 		const prompt: PromptFn = async (text, schema, opts) => {
 			const key = keys.jobFile(jobId, `calls/${opts.label.replaceAll(':', '-')}.json`);
-			const meta = await step.do(`prompt:${opts.label}`, async () => {
+			const meta = await durable(step)(`prompt:${opts.label}`, async () => {
 				log.info(`모델 호출: ${opts.label} (${opts.model})`);
 				const res = await harness.prompt(text, { result: schema, model: opts.model, documents: opts.documents });
 				await putJson(bucket, key, res.data);
@@ -64,7 +65,7 @@ export const extractPass = defineTool({
 		};
 
 		const fail = async (message: string) => {
-			await step.do(`fail:${pass}`, async () => {
+			await durable(step)(`fail:${pass}`, async () => {
 				await updateState(bucket, jobId, (s) => ({ ...s, stage: 'failed', outcome: 'error', error: message, progressNote: '추출 실패' }));
 				if (state.lockedVehicleKey) await releaseVehicleLock(bucket, state.lockedVehicleKey, jobId);
 				await repo.updateJobRow(jobId, { stage: 'failed', outcome: 'error', error: message });
@@ -91,7 +92,7 @@ export const extractPass = defineTool({
 			return fail(`추출 중 오류: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}`);
 		}
 		const ex: Extraction = result.extraction;
-		await step.do(`save-pass:${pass}`, () => putJson(bucket, keys.jobFile(jobId, `pass-${pass.toLowerCase()}.json`), ex));
+		await durable(step)(`save-pass:${pass}`, () => putJson(bucket, keys.jobFile(jobId, `pass-${pass.toLowerCase()}.json`), ex));
 
 		const counts = { trims: ex.trims.length, colors: ex.colors.length, options: ex.options.length, rules: ex.rules.length };
 		const stage: JobState['stage'] = pass === 'A' ? 'pass_a_done' : 'pass_b_done';
@@ -111,7 +112,7 @@ export const extractPass = defineTool({
 			vehicle = { ...id };
 			const d = await checkVehicle(repo, id, { sha256: state.sha256, force: state.force, ownJobId: jobId });
 			if (d.action !== 'process') {
-				await step.do('skip-after-a', async () => {
+				await durable(step)('skip-after-a', async () => {
 					await updateState(bucket, jobId, (s) => ({
 						...s,
 						stage: 'skipped',
@@ -140,7 +141,7 @@ export const extractPass = defineTool({
 			}
 			// Lock the identity the model found (it may differ from the file-name guess).
 			if (id.vehicleKey && id.vehicleKey !== state.lockedVehicleKey) {
-				const lock = await step.do('relock', async () => {
+				const lock = await durable(step)('relock', async () => {
 					if (state.lockedVehicleKey) await releaseVehicleLock(bucket, state.lockedVehicleKey, jobId);
 					return acquireVehicleLock(bucket, id.vehicleKey!, jobId, SCAN_POLICY.lockTtlMinutes);
 				});
@@ -149,7 +150,7 @@ export const extractPass = defineTool({
 		}
 
 		const notPriceSheet = pass === 'A' && !ex.document.isPriceSheet;
-		await step.do(`done:${pass}`, () =>
+		await durable(step)(`done:${pass}`, () =>
 			updateState(bucket, jobId, (s) => ({
 				...s,
 				stage,

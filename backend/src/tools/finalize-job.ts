@@ -14,6 +14,7 @@ import { log as jlog } from '../shared/log.ts';
 import { getJson, getPdfBytes, keys, putJson, releaseVehicleLock } from '../store/r2.ts';
 import { deps, jobUrl, loadState, requireStage, updateState } from './common.ts';
 import { isFallbackModel } from './extract-pass.ts';
+import { durable } from '../shared/durable.ts';
 
 type Pages = { page: number; text: string }[];
 
@@ -35,7 +36,7 @@ export const finalizeJob = defineTool({
 		const release = () => (state.lockedVehicleKey ? releaseVehicleLock(bucket, state.lockedVehicleKey, jobId) : Promise.resolve());
 
 		if (state.outcome === 'not_pricesheet') {
-			await step.do('not-pricesheet', async () => {
+			await durable(step)('not-pricesheet', async () => {
 				await repo.updateJobRow(jobId, { stage: 'finalized', outcome: 'not_pricesheet' });
 				await repo.updatePdfSource(state.sourceId, { kind: 'catalog', verdict: '가격표 아님' });
 				await updateState(bucket, jobId, (s) => ({ ...s, stage: 'finalized', progressNote: '가격표가 아니어서 정리하지 않음' }));
@@ -72,7 +73,7 @@ export const finalizeJob = defineTool({
 			fallbackA: isFallbackModel(state.models.passA),
 			fallbackB: isFallbackModel(state.models.passB),
 		});
-		await step.do('report', () => putJson(bucket, keys.jobFile(jobId, 'report.json'), result));
+		await durable(step)('report', () => putJson(bucket, keys.jobFile(jobId, 'report.json'), result));
 
 		const vehicle = state.vehicle;
 		const vehicleName = a.document.vehicleName ?? vehicle?.name ?? state.filename.replace(/\.pdf$/i, '');
@@ -80,9 +81,9 @@ export const finalizeJob = defineTool({
 		const brand = vehicle?.brand ?? a.document.brand ?? null;
 
 		log.info('Google Sheets에 반영 중');
-		const summary = await step.do('write-sheets', () => writeJobResult(repo, { jobId, brand, vehicleName, modelYear }, result));
+		const summary = await durable(step)('write-sheets', () => writeJobResult(repo, { jobId, brand, vehicleName, modelYear }, result));
 
-		await step.do('registry', async () => {
+		await durable(step)('registry', async () => {
 			if (vehicle?.vehicleKey && vehicle.familyKey) {
 				await repo.upsertVehicle({
 					vehicleKey: vehicle.vehicleKey,
@@ -140,7 +141,7 @@ export const finalizeJob = defineTool({
 
 		// New-data email. A separate durable step so a retry of the sheet write never mails twice,
 		// and a mail failure (e.g. unverified address on Workers Free) never fails the job.
-		await step.do('notify-email', async () => {
+		await durable(step)('notify-email', async () => {
 			try {
 				const mail = newDataMail(
 					{ vehicleName, modelYear, brand: brand ? BRAND_LABEL[brand] : '', counts: result.counts, jobId, replaced: summary.replacedRows > 0 },

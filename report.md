@@ -109,10 +109,11 @@ Phase 0~8의 코드·도구·문서와 **Phase 10(차종별 화면 하나로 개
 | 4 | OpenAI 폴백 모델 ID `openai/gpt-5.5`가 맞는지 (`backend/src/shared/config.ts` TODO) | 사용 가능한 최신 ID로 교체 |
 | 5 | PDF 분석의 Worker CPU 시간이 무료 플랜 한도 안인지 (PLAN 2.15) | `limits.cpu_ms` 상향(유료 플랜) |
 | 6 | Browser Run에서 현대 라인업·기아 탭 클릭이 실제로 동작하는지 | `docs/site-notes.md` 기준으로 선택자 수정 |
-| 7 | ✅ 확인됨(2026-11-10): 제네시스 POST 다운로드는 쿠키·Referer 없이 동작 | — |
+| 7 | ✅ 확인됨(2026-11-10): 제네시스 POST 다운로드는 쿠키·Referer 없이 동작. 단 **User-Agent가 없으면 200에 빈 본문**을 줌 — Worker의 fetch는 User-Agent를 붙이지 않아 "새 차종 테스트"에서 실패했고, 모든 제조사 요청에 User-Agent를 붙여 고침 | — |
 | 8 | 현대 가격표 주소 계산 규칙이 모든 차종에 맞는지 — ⚠️ 2026-11-10 `palisade_price.pdf`가 실제로 404 | 404 차종은 스캔 실패 목록에 남음 → 차종 페이지 "가격표" 버튼 클릭 방식으로 보완 |
 | 9 | ✅ 해결(F1): 실제 PDF에 연식 표기가 없어 전부 보류될 뻔함 → 기준일 연도, 그다음 처음 받은 날 연도로 추정 | 추정 연식이 실제 연식과 다를 수 있음(예: 2027년형을 2026년에 받음). 시트 `차량` 탭에서 확인 |
 | 10 | ✅ 해결: 칩은 모두 이미지였고(잘린 사진 띠), 현대는 로고 아이콘·기아는 시트 사진과 잘못 짝지어졌음 → 수정 후 외장 19/19. 내장은 제외 | 새 제조사 레이아웃이 나오면 `hex.ts` 기준 조정 |
+| 14 | ✅ 해결(2026-11-10, 첫 실제 실행): Flue durable 단계가 `undefined`를 반환하면 "value must not contain undefined values"로 도구가 실패함 — `prepare_source`(job-row)·`extract_pass`(save-pass) 실패로 작업이 "1차 추출 중"에서 멈춤. 모든 단계를 `shared/durable.ts`로 감싸 저장 가능한 값만 기록, 테스트용 가짜 단계도 Flue처럼 `undefined`를 거부 | 새 도구를 만들 때 `step.do` 대신 `durable(step)` 사용 |
 | 13 | 이메일 발송(Cloudflare Email Service)이 실제로 되는지 — 도메인·받는 주소 인증이 필요해 아직 미확인 | [docs/email-setup.md](docs/email-setup.md). 안 되면 실패는 로그에만 남고 작업은 그대로 성공 |
 | 11 | 도구 안(Durable Object)에서 `dispatch`로 새 대화를 시작하는 것 (Flue 소스로는 가능 확인) | Cloudflare Queues로 넘기기 |
 | 12 | 로컬에서 cron(scheduled) 핸들러를 트리거하는 방법 (PLAN 6.10) | 수동 "지금 확인" API로 대체 검증 |

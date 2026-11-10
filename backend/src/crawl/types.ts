@@ -1,5 +1,14 @@
 import type { Brand } from '@shared/types';
 
+/**
+ * Sent on every request to manufacturer sites. Workers' fetch adds no User-Agent, and the Genesis
+ * download endpoint answers a request without one with 200 and an empty body (2026-11-10).
+ */
+export const CRAWLER_HEADERS = {
+	'user-agent': 'Mozilla/5.0 (compatible; TrimSheet/1.0; personal price-sheet reader)',
+	'accept-language': 'ko-KR,ko;q=0.9',
+} as const;
+
 /** A price-sheet PDF found on a manufacturer site. */
 export interface PdfRef {
 	brand: Brand;

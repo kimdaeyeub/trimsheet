@@ -13,6 +13,7 @@ import { isoNow } from '../shared/time.ts';
 import { acquireVehicleLock, getPdfBytes, keys, putJson, writeState } from '../store/r2.ts';
 import { deps, jobUrl, next } from './common.ts';
 import { brandFromLabel, checkVehicle, processedSameFile } from './dedup-check.ts';
+import { durable } from '../shared/durable.ts';
 
 export const prepareSource = defineTool({
 	name: 'prepare_source',
@@ -60,7 +61,7 @@ export const prepareSource = defineTool({
 		if (id.vehicleKey) {
 			const d = await checkVehicle(repo, id, { sha256: src.sha256, force });
 			if (d.action !== 'process') {
-				await step.do('verdict', () => repo.updatePdfSource(data.sourceId, { verdict: `${d.rule} ${d.reason}` }));
+				await durable(step)('verdict', () => repo.updatePdfSource(data.sourceId, { verdict: `${d.rule} ${d.reason}` }));
 				return skipped(d.reason, d.rule, d.existingJobId);
 			}
 		}
@@ -83,13 +84,13 @@ export const prepareSource = defineTool({
 			};
 		}
 
-		const jobId = await step.do('job-id', () => newId('job'));
+		const jobId = await durable(step)('job-id', () => newId('job'));
 		if (id.vehicleKey) {
-			const lock = await step.do('lock', () => acquireVehicleLock(bucket, id.vehicleKey!, jobId, SCAN_POLICY.lockTtlMinutes));
+			const lock = await durable(step)('lock', () => acquireVehicleLock(bucket, id.vehicleKey!, jobId, SCAN_POLICY.lockTtlMinutes));
 			if (!lock.acquired) return skipped(`같은 차량을 다른 작업이 처리 중 (${lock.heldBy})`, 'R5');
 		}
 
-		await step.do('save-text', async () => {
+		await durable(step)('save-text', async () => {
 			await putJson(bucket, keys.jobFile(jobId, 'pages.json'), rawPages);
 			await putJson(bucket, keys.jobFile(jobId, 'layout.json'), layout);
 			return true;
@@ -120,8 +121,8 @@ export const prepareSource = defineTool({
 			createdAt: now,
 			updatedAt: now,
 		};
-		await step.do('state', () => writeState(bucket, state));
-		await step.do('job-row', () =>
+		await durable(step)('state', () => writeState(bucket, state));
+		await durable(step)('job-row', () =>
 			repo.createJobRow({
 				jobId,
 				conversationId: data.conversationId ?? '',

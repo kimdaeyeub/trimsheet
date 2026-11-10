@@ -1,7 +1,7 @@
 // Download / probe PDFs for crawled refs (GET links and Genesis' POST endpoint).
 import { MAX_PDF_BYTES, looksLikePdf } from '../pipeline/pdf-info.ts';
 import { AppError } from '../shared/errors.ts';
-import type { PdfRef } from './types.ts';
+import { CRAWLER_HEADERS, type PdfRef } from './types.ts';
 
 const GENESIS_PDFVIEW = 'https://www.genesis.com/wsvc/kr/api/v2/download-center/pdfview';
 
@@ -39,13 +39,19 @@ export async function downloadPdf(ref: Pick<PdfRef, 'url' | 'filename'>, signal?
 		method: req.method,
 		redirect: 'follow',
 		signal,
-		...(req.form ? { body: new URLSearchParams(req.form), headers: { 'content-type': 'application/x-www-form-urlencoded' } } : {}),
+		headers: { ...CRAWLER_HEADERS, ...(req.form ? { 'content-type': 'application/x-www-form-urlencoded' } : {}) },
+		...(req.form ? { body: new URLSearchParams(req.form) } : {}),
 	});
 	if (!res.ok) throw new AppError('download_failed', `다운로드 실패 (HTTP ${res.status})`);
 	if (Number(res.headers.get('content-length') ?? 0) > MAX_PDF_BYTES) throw new AppError('too_large', 'PDF가 50MB를 넘습니다.');
 	const bytes = await res.arrayBuffer();
 	if (bytes.byteLength > MAX_PDF_BYTES) throw new AppError('too_large', 'PDF가 50MB를 넘습니다.');
-	if (!looksLikePdf(bytes)) throw new AppError('not_pdf', '링크의 파일이 PDF가 아닙니다.');
+	if (!looksLikePdf(bytes)) {
+		// Say what came back instead (bot-protection pages, error HTML, redirects to a landing page).
+		const type = res.headers.get('content-type') ?? '알 수 없음';
+		const head = new TextDecoder().decode(new Uint8Array(bytes.slice(0, 200))).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+		throw new AppError('not_pdf', `링크의 파일이 PDF가 아닙니다 (받은 형식: ${type}, ${bytes.byteLength}바이트${head ? `, 내용: "${head}"` : ''}).`);
+	}
 	return {
 		bytes,
 		etag: res.headers.get('etag') ?? '',
@@ -61,7 +67,7 @@ export async function downloadPdf(ref: Pick<PdfRef, 'url' | 'filename'>, signal?
 export async function probe(url: string, signal?: AbortSignal): Promise<{ etag: string; lastModified: string; exists: boolean } | null> {
 	const req = requestFor(url);
 	if (req.method === 'POST') return null;
-	const res = await fetch(req.url, { method: 'HEAD', redirect: 'follow', signal });
+	const res = await fetch(req.url, { method: 'HEAD', redirect: 'follow', signal, headers: CRAWLER_HEADERS });
 	await res.body?.cancel();
 	return { exists: res.ok, etag: res.headers.get('etag') ?? '', lastModified: res.headers.get('last-modified') ?? '' };
 }

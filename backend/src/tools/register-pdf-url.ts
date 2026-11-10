@@ -6,6 +6,7 @@ import { AppError } from '../shared/errors.ts';
 import { sha256Hex, sourceIdFromSha } from '../shared/ids.ts';
 import { keys, putPdf } from '../store/r2.ts';
 import { deps, next } from './common.ts';
+import { durable } from '../shared/durable.ts';
 
 const ALLOWED_HOSTS = ['hyundai.com', 'kia.com', 'genesis.com'];
 
@@ -38,7 +39,7 @@ export const registerPdfUrl = defineTool({
 		// L1: same URL with unchanged ETag/Last-Modified → no download.
 		const known = await repo.findPdfSourceByUrl(url);
 		if (known) {
-			const probed = await step.do('head', () => probe(url, signal));
+			const probed = await durable(step)('head', () => probe(url, signal));
 			if (unchanged(known, probed)) {
 				log.info('같은 URL, 변경 없음 — 다운로드 생략');
 				return {
@@ -52,7 +53,7 @@ export const registerPdfUrl = defineTool({
 			}
 		}
 
-		const saved = await step.do('download', async () => {
+		const saved = await durable(step)('download', async () => {
 			const dl = await downloadPdf({ url }, signal);
 			const pageCount = await pdfPageCount(dl.bytes);
 			if (pageCount === null) throw new AppError('broken_pdf', 'PDF를 열 수 없습니다.');
@@ -62,7 +63,7 @@ export const registerPdfUrl = defineTool({
 		});
 
 		const sourceId = sourceIdFromSha(saved.sha256);
-		const added = await step.do('record', () =>
+		const added = await durable(step)('record', () =>
 			repo.addPdfSourceIfNew({
 				sourceId,
 				origin: 'url',

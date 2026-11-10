@@ -60,7 +60,16 @@ function extraction(year: string, date: string) {
 	};
 }
 
-const step = { do: async <T>(_name: string, fn: () => T | Promise<T>) => fn() };
+// Behaves like Flue: values are recorded as JSON and `undefined` (top level or nested) is rejected.
+const step = {
+	do: async <T>(name: string, fn: () => T | Promise<T>) => {
+		const v = await fn();
+		const hasUndefined = (x: unknown): boolean =>
+			x === undefined || (x !== null && typeof x === 'object' && Object.values(x as object).some(hasUndefined));
+		if (hasUndefined(v)) throw new Error(`[flue] step "${name}" value must not contain undefined values.`);
+		return v;
+	},
+};
 const log = { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} };
 
 function harnessFor(year: string, date: string) {
