@@ -27,7 +27,7 @@
 | `backend/src/sheets` | Google Sheets 연동(서비스 계정 인증, 탭 레이아웃, 읽기·쓰기) |
 | `backend/src/crawl`, `backend/src/scan` | 제조사 사이트 수집, 주간 스캔 |
 | `backend/src/eval`, `backend/scripts` | 정확도 평가, 정답 데이터 변환, 스모크 테스트 |
-| `frontend/src` | 화면(홈·대화·작업 결과·검토·수집 현황) |
+| `frontend/src` | 화면 하나: 구글 시트 데이터를 차종별로 보여 줌(브랜드 필터·검색·페이지 나눔·트림/선택 품목/색상/옵션 규칙 상세) |
 | `shared/types.ts` | 프론트·백엔드 공용 타입 |
 
 ## 로컬 실행
@@ -76,6 +76,7 @@ cd frontend && npm run lint && npm run build
 
 - **실제 PDF 스모크 테스트**(모델 호출 있음): `backend/scripts/smoke.sh <pdf>`
 - **정답 데이터 만들기**: 같은 열 구성의 CSV(`트림.csv` 등)를 한 폴더에 둔 뒤 `cd backend && npm run golden -- <폴더> fixtures/golden/<차종>.json <차종>`
+- **정답 초안을 시트에 올려 화면에서 보기**: `cd backend && npx tsx scripts/golden-to-sheet.ts add fixtures/golden/csv` (지우기: `... remove`). 작업ID `golden_…`, 상태 "확인 필요"로 들어가며 `차량` 탭은 건드리지 않습니다.
 - **정확도 평가**: `cd backend && npm run eval -- <jobId>=fixtures/golden/<차종>.json`
   - 결과는 `backend/eval-report.md`에 저장됩니다.
   - 목표: 자동 확정 정확도 99% 이상, 트림·옵션 누락 0, 규칙 재현율 95% 이상.

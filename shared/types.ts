@@ -200,3 +200,81 @@ export interface ScanRunsResponse {
 	baselineDone: boolean;
 	schedule: string;
 }
+
+// ---- Catalog (vehicle-by-vehicle view of the sheet data) --------------------
+
+/** One vehicle (brand + 차종 + 연식) in the catalog list. `id` is the job whose rows are shown. */
+export interface CatalogSummary {
+	id: string;
+	brand: string;
+	vehicleName: string;
+	modelYear: string;
+	effectiveDate: string;
+	trimCount: number;
+	colorCount: number;
+	optionCount: number;
+	ruleCount: number;
+	/** Rows still marked 확인 필요. */
+	reviewCount: number;
+	priceFrom: number | null;
+	priceTo: number | null;
+	updatedAt: string;
+}
+
+export interface CatalogTrim {
+	name: string;
+	price: number | null;
+	priceNote: string;
+	powertrain: string;
+	page: string;
+	status: string;
+}
+
+export interface CatalogColor {
+	kind: string;
+	name: string;
+	code: string;
+	hex: string;
+	applicableTrims: string;
+	page: string;
+	status: string;
+}
+
+export interface CatalogOption {
+	name: string;
+	price: number | null;
+	applicableTrims: string;
+	includes: string;
+	page: string;
+	status: string;
+}
+
+export interface CatalogRule {
+	type: string;
+	subject: string;
+	targets: string;
+	condition: string;
+	result: string;
+	footnote: string;
+	page: string;
+	status: string;
+}
+
+export interface CatalogDetail extends CatalogSummary {
+	trims: CatalogTrim[];
+	colors: CatalogColor[];
+	options: CatalogOption[];
+	rules: CatalogRule[];
+	pdfUrl: string | null;
+	sourceUrl: string | null;
+}
+
+export interface CatalogPage {
+	items: CatalogSummary[];
+	page: number;
+	pageSize: number;
+	total: number;
+	totalPages: number;
+	/** Vehicle counts per brand over the whole catalog (before the brand filter). */
+	brands: Record<string, number>;
+}

@@ -14,11 +14,6 @@ export const queryClient = new QueryClient({
 export const qk = {
   health: ['health'] as const,
   settings: ['settings'] as const,
-  conversations: ['conversations'] as const,
-  jobs: (conversationId?: string) => ['jobs', conversationId ?? 'all'] as const,
-  job: (id: string) => ['job', id] as const,
-  jobState: (id: string) => ['jobState', id] as const,
-  notifications: ['notifications'] as const,
-  vehicles: ['vehicles'] as const,
-  scanRuns: ['scanRuns'] as const,
+  catalog: (page: number, pageSize: number, brand: string, q: string) => ['catalog', page, pageSize, brand, q] as const,
+  vehicle: (id: string) => ['vehicle', id] as const,
 }

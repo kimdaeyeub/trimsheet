@@ -209,6 +209,16 @@ export class SheetsRepo {
 		return { items, review: pick('review') };
 	}
 
+	/** All data-tab rows plus job rows, for the catalog view (one batchGet). */
+	async readCatalogRows(): Promise<{ items: Record<SheetName, Record<string, string>[]>; jobs: Record<string, string>[] }> {
+		const data = await this.read('trim', 'color', 'option', 'rule', 'job');
+		const items = Object.fromEntries((Object.keys(ITEM_TABS) as SheetName[]).map((s) => [s, data[s].map((r) => r.values)])) as Record<
+			SheetName,
+			Record<string, string>[]
+		>;
+		return { items, jobs: data.job.map((r) => r.values) };
+	}
+
 	async createJobRow(row: Partial<JobRow> & { jobId: string }): Promise<void> {
 		const now = kstNow();
 		await this.appendOne('job', { createdAt: now, updatedAt: now, ...row });
