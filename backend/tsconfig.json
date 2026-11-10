@@ -21,9 +21,10 @@
 		}
 	},
 	"include": [
+		"../shared",
+		"scripts",
 		"src",
 		"test",
-		"worker-configuration.d.ts",
-		"../shared"
+		"worker-configuration.d.ts"
 	]
 }

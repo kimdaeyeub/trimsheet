@@ -860,7 +860,7 @@ export const SCAN_POLICY = {
 - [x] **0.2** Worker 이름: `trimsheet-backend`, `trimsheet-frontend`. (🔎 배포 이력 확인)
 - [x] **0.3** 두 `wrangler.jsonc`: `compatibility_date: "2026-11-08"`(설치된 workerd가 지원하는 최신 날짜), `observability: { "enabled": true, "traces": { "enabled": true } }`.
 - [x] **0.4** `backend` 의존성: `npm i valibot unpdf pdf-lib @cloudflare/playwright` / `npm i -D vitest @cloudflare/vitest-pool-workers`. (🔎 vitest-pool-workers와 Vite 8 호환, valibot 버전이 Flue와 맞는지)
-- [ ] **0.5** R2 버킷 생성(사용자 로그인 필요 — 안 돼 있으면 `npx wrangler login`을 요청하고 멈춤): `npx wrangler r2 bucket create trimsheet-files`.
+- [ ] **0.5** (→ Phase 9.11) R2 버킷 생성(사용자 로그인 필요 — 안 돼 있으면 `npx wrangler login`을 요청하고 멈춤): `npx wrangler r2 bucket create trimsheet-files`.
 - [x] **0.6** `backend/wrangler.jsonc`:
   ```jsonc
   {
@@ -921,7 +921,7 @@ export const SCAN_POLICY = {
   - `files`: `pdf/` 접두사만 허용, R2 스트림 반환, `content-disposition: inline`.
 - [x] **1.6** `src/app.ts` 재작성: Hello 제거, 라우트 마운트, `app.route('/api/agents/trimsheet', createAgentRouter(TrimSheet))`. `hello.ts` 삭제.
 - [x] **1.7** 임시 `TrimSheet`(도구 없이)로 GLM 대화 확인: `curl -X POST localhost:5174/api/agents/trimsheet/test-1 -H 'content-type: application/json' -d '{"kind":"user","body":"안녕"}'`.
-- [ ] **1.8** 사용자가 Sheets 설정을 마쳤다면: `/api/health`가 `sheets: 'ok'`, 첫 호출에 탭·헤더가 자동 생성되는지 실제 시트로 확인.
+- [ ] **1.8** (→ Phase 9.1) 사용자가 Sheets 설정을 마쳤다면: `/api/health`가 `sheets: 'ok'`, 첫 호출에 탭·헤더가 자동 생성되는지 실제 시트로 확인.
 
 **완료 조건**: PDF 업로드 → R2 저장 + (설정된 경우) `PDF목록` 탭에 행 추가, 같은 파일 재업로드 시 `alreadyKnown: true`, GLM이 채팅에 응답, 테스트 통과.
 
@@ -931,11 +931,11 @@ export const SCAN_POLICY = {
 
 > 기획서: "이게 되지 않으면 나머지는 의미가 없으므로 가장 먼저 만듭니다."
 
-- [ ] **2.0** 🔎 스파이크(1시간 이내), 결과를 결정 기록에:
+- [ ] **2.0** (→ Phase 9.2) 🔎 스파이크(1시간 이내), 결과를 결정 기록에:
   - `unpdf` 텍스트·좌표 추출이 workerd에서 동작하는지.
   - GLM-4.7-Flash에 Flue `harness.prompt({ result })`로 구조화 결과(트림 20개 분량의 JSON)를 요청해 **잘리지 않고** 스키마를 통과하는지(§6.2).
   - `openai/<model>`에 `documents`로 PDF를 주고 같은 스키마 결과를 받는지(`OPENAI_API_KEY` 있을 때).
-- [ ] **2.1** 테스트 PDF: 사용자에게 "더 뉴 스타리아 Electric" 가격표 PDF를 `backend/fixtures/pdf/`에 넣어 달라고 요청. 없으면 공개된 현대 가격표 PDF 1개로 대체. **같은 차종의 이전 연식 PDF가 있으면 함께 받아 R2(이전 연식) 테스트에 사용.**
+- [ ] **2.1** (→ Phase 9.2) 테스트 PDF: 사용자에게 "더 뉴 스타리아 Electric" 가격표 PDF를 `backend/fixtures/pdf/`에 넣어 달라고 요청. 없으면 공개된 현대 가격표 PDF 1개로 대체. **같은 차종의 이전 연식 PDF가 있으면 함께 받아 R2(이전 연식) 테스트에 사용.**
 - [x] **2.2** `pipeline/schema.ts`, `normalize.ts` + 테스트(`parsePrice` 표기 10종, `normName`).
 - [x] **2.3** `pipeline/identity.ts` + 표 기반 테스트(파일명·표지 문구 20개 이상: 연식, 계열 키, 기준일).
 - [x] **2.4** `pipeline/dedup.ts` + 표 기반 테스트(§7.11 R1~R11 + 예시 시나리오 전부).
@@ -947,10 +947,10 @@ export const SCAN_POLICY = {
 - [x] **2.10** `sheets/repo.ts` `writeJobResult`(§7.8) + 메모리 구현 테스트.
 - [x] **2.11** 도구: `register_pdf_url`(L1·L2), `prepare_source`(L3, `force`, 잠금), `extract_pass`(A만 + Pass A 직후 L3 재확인), `finalize_job`(`차량` 탭 갱신, 잠금 해제), `get_job`, `search_vehicles`. 모두 `nextStep` 반환, `progressNote` 갱신, `log.info`.
   - `extract_pass`: 섹션별 `step.do('section:<name>:<model>', …)` 안에서 `harness.prompt` + R2 저장 후 **키만** 반환. 폴백 재시도는 다른 step 이름으로.
-- [ ] **2.12** `TrimSheet` 연결 + 시스템 프롬프트(§6.3). **같은 PDF로 10회** 대화 실행해 도구 순서 이탈 횟수 기록 → 3회 이상이면 단일 도구 모드(§6.4)로 전환.
-- [ ] **2.13** 중복 시나리오 수동 확인: (a) 같은 PDF를 두 번 올리면 두 번째는 건너뛰고 기존 결과 링크 안내, (b) 이전 연식 PDF를 올리면 "최신 연식이 있다"며 건너뜀, (c) "그래도 정리해 줘" → `force`로 처리되고 시트의 같은 차량키 행이 교체됨.
+- [ ] **2.12** (→ Phase 9.3) `TrimSheet` 연결 + 시스템 프롬프트(§6.3). **같은 PDF로 10회** 대화 실행해 도구 순서 이탈 횟수 기록 → 3회 이상이면 단일 도구 모드(§6.4)로 전환.
+- [ ] **2.13** (→ Phase 9.4) 중복 시나리오 수동 확인: (a) 같은 PDF를 두 번 올리면 두 번째는 건너뛰고 기존 결과 링크 안내, (b) 이전 연식 PDF를 올리면 "최신 연식이 있다"며 건너뜀, (c) "그래도 정리해 줘" → `force`로 처리되고 시트의 같은 차량키 행이 교체됨.
 - [x] **2.14** `scripts/smoke.sh`: 업로드 → 메시지 → 대기 → 시트(또는 메모리) 결과 확인 → 같은 파일 재업로드 시 건너뜀 확인.
-- [ ] **2.15** CPU/시간 측정: `prepare_source`·`finalize_job` CPU 시간. 무료 플랜 한도를 넘으면 `limits.cpu_ms` 상향 필요성을 사용자에게 알림.
+- [ ] **2.15** (→ Phase 9.5) CPU/시간 측정: `prepare_source`·`finalize_job` CPU 시간. 무료 플랜 한도를 넘으면 `limits.cpu_ms` 상향 필요성을 사용자에게 알림.
 
 **완료 조건**: fixture PDF 1개로 대화 한 번에 Google Sheets의 데이터 탭·`차량`·`작업` 탭에 행이 생기고, 모든 행에 근거 페이지가, 규칙 행에 각주 원문이 들어 있다. 같은 PDF·이전 연식 PDF는 LLM 호출 없이 건너뛴다.
 
@@ -967,7 +967,7 @@ export const SCAN_POLICY = {
 - [x] **3.7** `ChatPage` + `chat/*` + 도구 카드(`prepare_source`, `SkippedCard`, `extract_pass`, `finalize_job`) + Generic(§8.3 ②).
 - [x] **3.8** `JobsPage`.
 - [x] **3.9** 빈 상태/오류 상태(대화 없음, 연결 실패, 업로드 실패, 시트 반영 실패).
-- [ ] **3.10** 내장 브라우저로 확인: PDF 드래그 → 도구 카드 진행 → 결과 카드 → `Google Sheets에서 보기`. 같은 PDF 재업로드 → `SkippedCard` → `그래도 정리하기`. 새로고침 후 대화 복원(`historyReady`).
+- [ ] **3.10** (→ Phase 9.2) 내장 브라우저로 확인: PDF 드래그 → 도구 카드 진행 → 결과 카드 → `Google Sheets에서 보기`. 같은 PDF 재업로드 → `SkippedCard` → `그래도 정리하기`. 새로고침 후 대화 복원(`historyReady`).
 
 **완료 조건**: 브라우저에서 PDF를 올리면 Google Sheets에 결과가 올라가고, 중복 PDF는 건너뛴다는 카드가 뜨며, 메인 컬러 `#3742fa`가 버튼·사용자 말풍선·로고·활성 메뉴·시트 헤더에 일관되게 적용됨.
 
@@ -1052,7 +1052,7 @@ export const SCAN_POLICY = {
 - [x] **6.7** `POST /api/vehicles/:key/process`(기준선/갱신 후보/보류 → `force` 처리), `POST /api/vehicles/:key/dismiss`.
 - [x] **6.8** 알림: `_알림` 탭에 `scan_done`(처리·기준선·갱신 후보·보류 수 요약)/`scan_failed`/`job_done`/`job_failed`. 프론트 `NotificationBell`.
 - [x] **6.9** `SourcesPage`(§8.3 ⑤) + `GET /api/vehicles`, `GET/POST /api/scan-runs`.
-- [ ] **6.10** 🔎 로컬에서 scheduled 핸들러 트리거 방법 확인(`/cdn-cgi/handler/scheduled` 지원 여부). 안 되면 수동 실행 API로 검증.
+- [ ] **6.10** (→ Phase 9.9) 🔎 로컬에서 scheduled 핸들러 트리거 방법 확인(`/cdn-cgi/handler/scheduled` 지원 여부). 안 되면 수동 실행 API로 검증.
 - [x] **6.11** 시나리오 검증(메모리 시트 + 가짜 어댑터로 자동화 테스트):
   - 첫 스캔: 모든 차량이 `기준선`, LLM 호출 0회, `baseline_done=TRUE`.
   - 두 번째 스캔(변화 없음): L1에서 전부 건너뜀, 다운로드 0회.
@@ -1068,7 +1068,7 @@ export const SCAN_POLICY = {
 
 ### Phase 7 — 최소 기능 ⑤: 헥사코드 근사값
 
-- [ ] **7.1** 🔎 fixture PDF 3개에서 색상 칩이 래스터 이미지인지 확인(§7.10).
+- [ ] **7.1** (→ Phase 9.7) 🔎 fixture PDF 3개에서 색상 칩이 래스터 이미지인지 확인(§7.10).
 - [x] **7.2** `pipeline/hex.ts` + 테스트(단색 → 정확한 hex, 그라데이션/사진 → 제외).
 - [x] **7.3** `finalize_job`에 hex 단계: 출처(`이미지`/`OpenAI 추정`/없음)를 `헥사 출처` 열에.
 - [x] **7.4** 시트 `미리보기` 셀 배경색, 검토 화면 칩 + "근사값", `확인필요` 탭에 "헥사코드 근사값 N개 확인" 1줄.
@@ -1077,25 +1077,54 @@ export const SCAN_POLICY = {
 
 ---
 
-### Phase 8 — 평가와 배포
+### Phase 8 — 평가 도구와 배포 준비
 
-- [ ] **8.1** 정답 데이터: 사용자가 사람이 정리한 차종 3개를 받아 `backend/fixtures/golden/<차종>.json`(schema 형식)으로 변환(`scripts/golden-from-sheet.ts` — 같은 레이아웃의 시트나 CSV에서 변환).
-- [ ] **8.2** `scripts/eval.ts`(`npm run eval`): fixture PDF 처리 결과(R2 `report.json`)와 정답 비교.
-  - 자동 확정 정확도 ≥ 99%, 트림·가격·옵션 누락 0, 규칙 재현율(찾음 ∪ 확인 필요) ≥ 95%
-  - 차종별 사용 모델·폴백 횟수도 기록 → `backend/eval-report.md`.
-  - 연식·계열 키 인식 정확도(정답 차종 3개 + 파일명 샘플)도 함께 측정.
-- [ ] **8.3** 목표 미달 시: 프롬프트/레이아웃 복원/검증 규칙 조정 → 재평가. 그래도 미달이면 사용자에게 "Pass B를 OpenAI로 고정"(`PASS_B_MODEL`) 여부를 묻고 결정 기록.
-- [ ] **8.4** 배포 (사용자 확인 후):
-  - `cd backend && npx wrangler secret put OPENAI_API_KEY`
-  - `npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL`, `npx wrangler secret put GOOGLE_PRIVATE_KEY`
-  - `wrangler.jsonc` `vars.GOOGLE_SPREADSHEET_ID` 확인
-  - `cd backend && npm run deploy` → `cd frontend && npm run deploy` (**백엔드 먼저**)
-  - 배포 URL에서 업로드 → 시트 반영 확인, Workers Logs/Traces 확인.
-  - **첫 cron 실행 전에** `_설정` `baseline_done`이 `FALSE`인지 확인(기준선 모드로 시작).
-- [ ] **8.5** 접근 보호(권장): 공개 URL에 에이전트(Workers AI·OpenAI 비용)가 노출되므로 **Cloudflare Access**(본인 이메일만)를 frontend에 걸지 사용자에게 확인. 백엔드는 `workers_dev: false`로 공개 URL을 끄고 서비스 바인딩으로만 접근(🔎 cron/DO가 공개 URL 없이 동작하는지 확인).
-- [ ] **8.6** 루트 `README.md`: 로컬 실행, 배포, 환경 변수, Google Sheets 설정 문서 링크, 수집 정책(`SCAN_POLICY`) 설명, 구조 요약.
+> 2026-11-10 개정: 실제 데이터가 필요한 실행(정확도 측정, 배포, 접근 보호 적용)은 **Phase 9**로 옮겼습니다. Phase 8은 그 실행에 필요한 도구와 문서를 준비합니다.
+
+- [x] **8.1** 정답 데이터 변환 도구: `backend/src/eval/golden.ts` + `npm run golden -- <csv-폴더> <out.json> [차종]`. 시트 탭과 같은 열 구성의 CSV(`트림.csv`·`색상.csv`·`선택품목.csv`·`옵션규칙.csv`)를 읽고 `상태=제외` 행은 뺌.
+- [x] **8.2** 평가 도구: `backend/src/eval/metrics.ts`(자동 확정 정확도, 트림·옵션 누락/가격 오류, 규칙 재현율, 시트별 누락·값 다름) + `npm run eval -- <jobId>=<golden.json> ...` → `backend/eval-report.md`. 결과는 새 API `GET /api/jobs/:id/report`(R2 `report.json`)에서 읽음 — 모델 호출 없음. 목표 미달이면 종료 코드 2.
+- [x] **8.3** (실행은 9.10) 목표 미달 시 조정 절차를 Phase 9에 정의.
+- [x] **8.4** 배포 준비: 백엔드 `workers_dev: false`·`preview_urls: false`(공개 URL 없음, 서비스 바인딩으로만 접근), 루트 `scripts/deploy.sh`(Node·로그인·R2 버킷·비밀값 확인 → 테스트·빌드 → 백엔드→프론트엔드 순 배포), 안내서 `docs/deploy.md`. (실제 배포는 9.11)
+- [x] **8.5** 접근 보호 안내: `docs/deploy.md` §4(Cloudflare Access로 본인 이메일만 허용). (적용 여부 결정과 적용은 9.11)
+- [x] **8.6** 루트 `README.md`: 구조, 로컬 실행, 환경 변수, 테스트·평가, 배포, 동작 규칙 요약.
+
+**완료 조건**: 평가·배포 도구가 테스트되고(백엔드 테스트 156개), 사용자가 Phase 9.0 준비물만 채우면 바로 확인 작업을 시작할 수 있다.
 
 ---
+
+### Phase 9 — 실제 데이터 확인과 배포
+
+> Phase 0~8에서 **실제 데이터·유료 서비스가 필요해 미뤄 둔 확인**을 모두 여기서 합니다. 시작 조건은 9.0입니다. 각 단계는 "통과 기준"을 만족해야 다음으로 넘어가고, 실패하면 report.md의 대안대로 고친 뒤 다시 확인합니다. 비용이 드는 단계는 ⚡ 표시 — 실행 전 대략의 호출 수를 사용자에게 알립니다.
+
+- [ ] **9.0 준비물 (사용자)** — 모두 준비되면 시작
+  - 실제 가격표 PDF 1개 이상 → `backend/fixtures/pdf/` (같은 차종의 이전 연식 PDF가 있으면 함께)
+  - Google Sheets 연결 → `docs/google-sheets-setup.md` (`backend/.env` 2개 값 + `wrangler.jsonc` `vars.GOOGLE_SPREADSHEET_ID`)
+  - (선택) `OPENAI_API_KEY` → `backend/.env`
+  - R2 활성화(대시보드) — 9.11 전까지
+  - 정답 데이터 3종(CSV, 시트와 같은 열 구성) — 9.10 전까지
+  - 결정: 배포 후 Cloudflare Access 적용 여부(9.11)
+- [ ] **9.1 Google Sheets 연결** (← 1.8) — dev 서버 재시작 후 `GET /api/health`가 `sheets: "ok"`, 스프레드시트에 탭 12개(숨김 3개)와 헤더·드롭다운이 생성됨. 화면의 노란 배너가 사라짐.
+- [ ] **9.2 ⚡ 실제 PDF 1개 처리** (← 2.0, 2.1, 3.10) — 화면에서 PDF를 올려 대화 1회. 예상 GLM 호출 ≈ 대화 4~6턴 + 추출 6회.
+  - 통과 기준: 도구 카드가 분석→1차→2차→마감 순서로 진행, 결과 카드가 뜨고 시트 탭에 행이 생김, 모든 행에 근거 페이지, 규칙 행에 각주 원문.
+  - 함께 확인: GLM 구조화 출력이 스키마를 통과하는지, 도구 안 `cloudflare:workers` env 접근(`shared/env.ts` TODO), 폴백이 필요한 경우 OpenAI 모델 ID(`shared/config.ts` TODO). 결과를 결정 기록에.
+  - 실패 시: report.md §4-2의 대안(섹션 분할, JSON 모드, 단일 도구 모드, env 접근 방식 교체).
+- [ ] **9.3 ⚡ 도구 순서 안정성** (← 2.12) — 같은 PDF로 2회 더 실행(첫 판정). 순서 이탈이 있으면 사용자 동의 후 10회까지 늘려 측정. 3/10 이상 이탈이면 단일 도구 모드 전환.
+- [ ] **9.4 중복·연식 시나리오** (← 2.13) — (a) 같은 PDF 재업로드 → 모델 호출 없이 건너뜀 카드, (b) 이전 연식 PDF → "이전 연식" 건너뜀, (c) "그래도 정리해 줘" → force로 처리되고 시트의 같은 차량 행이 교체됨.
+- [ ] **9.5 CPU·시간 측정** (← 2.15) — Workers Logs/Traces에서 `prepare_source`·`finalize_job`의 CPU 시간 확인. 무료 플랜 한도를 넘으면 `limits.cpu_ms` 상향(유료 플랜) 여부를 사용자에게 묻기.
+- [ ] **9.6 검토 화면** (← Phase 4 실데이터) — 실제 결과로 승인·수정·제외, 일괄 승인, 근거 클릭 시 PDF 페이지 이동, 시트에서 직접 고친 값이 화면에 반영되는지.
+- [ ] **9.7 헥사코드** (← 7.1) — 실제 PDF의 색상 칩이 벡터/이미지 중 무엇인지, `PDF 칩` 출처로 채워진 비율. 짝짓기가 틀리면 거리 기준(`hex.ts` `matchChips`) 조정 + 테스트 추가.
+- [ ] **9.8 ⚡ 차종 페이지에서 PDF 찾기** (← 5.6 실행) — 현대·기아·제네시스 차종(또는 목록) 페이지 URL을 각각 채팅에 붙여 `find_pdfs_on_page` 결과 확인. Browser Run은 현대·기아에서만 사용. 실패 시 `docs/site-notes.md`·어댑터 선택자 수정.
+- [ ] **9.9 ⚡ 첫 스캔(기준선)과 cron** (← 6.10) — 수집 현황에서 "지금 확인" 1회.
+  - 통과 기준: 세 브랜드 차량이 `기준선`으로 등록, AI 처리 0건, `_설정 baseline_done=TRUE`, 스캔 기록·알림 생성, 상용차 제외.
+  - 함께 확인: 제네시스 POST 다운로드, 현대 PDF 주소 규칙(404 차종), 연식 미상 → 보류 비율(높으면 연식 판단 규칙 보강), Watcher 도구 안에서 `dispatch` 동작.
+  - 로컬 scheduled 트리거: Vite dev에서 `/cdn-cgi/handler/scheduled` 지원 여부 확인, 안 되면 배포 후 대시보드에서 확인.
+- [ ] **9.10 ⚡ 정확도 평가** (← 8.1~8.3 실행) — 정답 3종을 `npm run golden`으로 변환 → 같은 3개 PDF 처리 → `npm run eval`.
+  - 통과 기준: 자동 확정 정확도 ≥ 99%, 트림·가격·옵션 누락 0, 규칙 재현율 ≥ 95%.
+  - 미달 시: 프롬프트·표 복원·검증 규칙 조정 후 재평가. 그래도 미달이면 "2차 추출을 OpenAI로 고정" 여부를 사용자에게 묻고 결정 기록.
+- [ ] **9.11 배포와 접근 보호** (← 0.5, 8.4, 8.5) — R2 버킷 생성 → `wrangler secret put` → `./scripts/deploy.sh` → 배포 URL에서 업로드→시트 반영, Logs/Traces 오류 없음, cron 등록 확인, 첫 cron 전 `baseline_done` 확인. 사용자가 결정했으면 Cloudflare Access 적용 후 시크릿 창으로 차단 확인.
+- [ ] **9.12 마무리** — report.md 갱신(남은 위험·결정), 우회 항목 정리 가능 여부 확인(pi-ai 버전 고정 해제, compatibility_date 갱신, 번들 크기), 커밋·푸시.
+
+**완료 조건**: 9.1~9.11 통과 기준을 모두 만족하고, 배포된 앱에서 실제 가격표가 Google Sheets까지 정리된다.
 
 ## 10. 테스트 전략
 
@@ -1210,6 +1239,8 @@ export const SCAN_POLICY = {
 | 2026-11-10 | 헥사 출처: `PDF 칩` / `OpenAI 추정`(폴백 때만) / `사용자 수정`. 확인필요 탭에 작업당 "헥사코드 근사값 N개" 요약 행(승인만 가능) | 근사값임을 항상 드러내고, 검토 부담은 한 줄로 |
 | 2026-11-10 | 헥사 추출 실패는 작업을 실패시키지 않음(로그만) | 핵심 데이터(트림·가격·옵션·규칙) 반영이 우선 |
 | 2026-11-10 | 7.1(실제 제조사 PDF의 칩 형태 확인)은 데이터 준비 후 마지막에 | 사용자 요청 |
+| 2026-11-10 | Phase 8은 평가·배포 **도구와 문서**까지, 실제 확인·배포는 **Phase 9**로 분리 | 사용자 요청(데이터는 Phase 8 직후 제공) |
+| 2026-11-10 | 백엔드 `workers_dev: false`·`preview_urls: false` | 공개 URL 없이 서비스 바인딩으로만 접근(비용·보안) |
 | (미정) | Pass B를 OpenAI로 고정할지 | Phase 8 정확도 결과를 보고 사용자가 결정 |
 |  |  |  |
 

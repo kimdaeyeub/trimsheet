@@ -5,7 +5,7 @@ import { applyItemAction, approveAllAuto } from '../sheets/review.ts';
 import { parseJson } from './validate.ts';
 import { getRepo, isSheetsConfigured } from '../sheets/index.ts';
 import { AppError } from '../shared/errors.ts';
-import { readState } from '../store/r2.ts';
+import { getJson, keys, readState } from '../store/r2.ts';
 
 export const jobs = new Hono<{ Bindings: Env }>();
 
@@ -18,6 +18,14 @@ jobs.get('/:id/state', async (c) => {
 	const state = await readState(c.env.FILES, c.req.param('id'));
 	if (!state) throw new AppError('not_found', '작업을 찾을 수 없습니다.', 404);
 	return c.json(state.value);
+});
+
+// Stored verification result (used by scripts/eval.ts).
+jobs.get('/:id/report', async (c) => {
+	const jobId = c.req.param('id');
+	const [report, state] = await Promise.all([getJson(c.env.FILES, keys.jobFile(jobId, 'report.json')), readState(c.env.FILES, jobId)]);
+	if (!report) throw new AppError('not_found', '이 작업의 검증 결과가 없습니다(아직 정리되지 않음).', 404);
+	return c.json({ jobId, vehicle: [state?.value.vehicle?.name, state?.value.vehicle?.modelYear].filter(Boolean).join(' '), report });
 });
 
 jobs.get('/:id', async (c) => {

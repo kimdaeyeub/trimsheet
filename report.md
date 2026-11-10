@@ -1,13 +1,13 @@
 # TrimSheet 진행 보고서
 
-> 작성일: 2026-11-10 · 기준 커밋: `b8b1d92` (Phase 7)
+> 작성일: 2026-11-10 · 최종 갱신: Phase 8 완료 후
 > 상세 설계와 결정 기록은 [PLAN.md](PLAN.md), 사이트 조사 결과는 [docs/site-notes.md](docs/site-notes.md), Google Sheets 연결 방법은 [docs/google-sheets-setup.md](docs/google-sheets-setup.md)에 있습니다.
 
 ## 1. 한 줄 요약
 
-Phase 0~7의 **코드는 모두 작성·테스트되었고 GitHub에 올라가 있습니다**. 실제 데이터(가격표 PDF, Google Sheets)와 유료 서비스(Workers AI, Browser Run)를 쓰는 확인은 요청에 따라 **마지막으로 미뤘습니다**. 배포(Phase 8)는 아직 하지 않았습니다.
+Phase 0~8의 **코드·도구·문서는 모두 작성·테스트되었고 GitHub에 올라가 있습니다**. 실제 데이터(가격표 PDF, Google Sheets)와 유료 서비스(Workers AI, Browser Run)를 쓰는 확인과 실제 배포는 **Phase 9**로 모았습니다. [PLAN.md](PLAN.md)의 Phase 9.0 준비물이 채워지면 바로 시작합니다.
 
-- 백엔드 테스트 **152개** 통과 · 타입 체크 · 프로덕션 빌드 통과
+- 백엔드 테스트 **156개** 통과 · 타입 체크 · 프로덕션 빌드 통과
 - 프론트엔드 타입 체크 · 빌드 · lint 경고 없음
 - 개발 중 Workers AI 호출은 Phase 0 연결 확인 1회뿐입니다(대화 1건). Browser Run·OpenAI는 한 번도 호출하지 않았습니다.
 
@@ -23,7 +23,8 @@ Phase 0~7의 **코드는 모두 작성·테스트되었고 GitHub에 올라가 �
 | 5 | 차종 페이지 URL에서 PDF 찾기 | ✅ | ✅ 사이트 구조 조사 / ⏳ Browser Run 실제 실행 |
 | 6 | 3사 주간 스캔, 기준선, 신규 감지, 수집 현황 화면 | ✅ | ⏳ 실제 스캔, cron 트리거 |
 | 7 | 헥사코드 근사값(PDF 색상 칩) | ✅ | ⏳ 실제 PDF의 칩 형태 |
-| 8 | 정확도 평가, 배포, README | ❌ 시작 전 | — |
+| 8 | 평가 도구(정답 변환·정확도 측정), 배포 준비(스크립트·안내서·공개 URL 차단), README | ✅ | — (실행은 Phase 9) |
+| 9 | 실제 데이터 확인, 정확도 평가 실행, 배포·접근 보호 | — | ⏳ 준비물(9.0) 대기 |
 
 ## 3. 지금까지 한 작업
 
@@ -73,6 +74,8 @@ Phase 0~7의 **코드는 모두 작성·테스트되었고 GitHub에 올라가 �
 | `8e943ee` | Phase 5 PDF 찾기 |
 | `677c1ac` | Phase 6 주간 스캔·수집 현황 |
 | `b8b1d92` | Phase 7 헥사코드 |
+| `28cd686` | 진행 보고서 |
+| (이번 커밋) | Phase 8 평가·배포 준비, Phase 9 정의 |
 
 ## 4. 수정이 필요하거나 주의해야 할 사항
 
@@ -111,7 +114,7 @@ Phase 0~7의 **코드는 모두 작성·테스트되었고 GitHub에 올라가 �
 - **Workers AI 과금**: Workers AI 바인딩은 로컬 개발 중에도 실제 Cloudflare로 호출되어 소액 과금됩니다.
 - **`project-overview.md` 공개 여부**: 클라이언트 문의 내용이 담긴 기획서가 공개 저장소에 올라가 있습니다. 공개해도 괜찮은지 확인해 주세요.
 
-## 5. 사용자가 채워 줘야 하는 부분
+## 5. 사용자가 채워 줘야 하는 부분 (= PLAN.md Phase 9.0)
 
 | 우선순위 | 항목 | 방법 | 필요한 단계 |
 | --- | --- | --- | --- |
@@ -119,8 +122,8 @@ Phase 0~7의 **코드는 모두 작성·테스트되었고 GitHub에 올라가 �
 | 2 | **Google Sheets 연결** | [docs/google-sheets-setup.md](docs/google-sheets-setup.md) 순서대로 → `backend/.env`에 `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` / `backend/wrangler.jsonc`의 `vars.GOOGLE_SPREADSHEET_ID` | 1.8 및 결과 저장 전체 |
 | 3 | **OpenAI API 키** (선택) | `backend/.env`의 `OPENAI_API_KEY`. 없으면 스캔본 PDF는 처리하지 않고, GLM 품질이 낮아도 폴백하지 않음 | 폴백 |
 | 4 | **R2 활성화** | Cloudflare 대시보드 → R2 메뉴에서 활성화(결제 수단 등록이 필요할 수 있음). 활성화 후 알려 주시면 버킷 `trimsheet-files` 생성 | 0.5, 배포 |
-| 5 | **정답 데이터 3종** | 사람이 직접 정리한 차종 3개의 결과(시트나 CSV, 같은 열 구성) | 8.1~8.3 정확도 평가 |
-| 6 | **결정 필요** | 아래 표 참고 | 8단계 |
+| 5 | **정답 데이터 3종** | 사람이 직접 정리한 차종 3개의 결과. Google Sheets의 `트림`·`색상`·`선택품목`·`옵션규칙` 탭과 같은 열 구성으로 만들어 CSV로 내려받기(`차종` 열로 구분) → `npm run golden`으로 변환 | 9.10 정확도 평가 |
+| 6 | **결정 필요** | 아래 표 참고 | 9.10, 9.11 |
 
 **결정이 필요한 것**
 
@@ -130,8 +133,13 @@ Phase 0~7의 **코드는 모두 작성·테스트되었고 GitHub에 올라가 �
 | 배포 후 접근 보호 | Cloudflare Access(본인 이메일만) / 공개 URL 그대로 | 미정 — 공개 시 누구나 AI 비용을 발생시킬 수 있어 Access 권장 |
 | 유료 플랜 전환 | CPU 시간·번들 크기 한도를 넘을 때 | 실제 측정 후 판단 |
 
-## 6. 다음 순서 제안
+## 6. 다음 순서 (Phase 9)
 
-1. 위 1·2번(PDF, Google Sheets)을 준비해 주시면, 미뤄 둔 확인을 한 번에 진행합니다: 2.0, 2.12, 2.13, 2.15, 3.10, 1.8, 7.1. 비용은 PDF 1개당 GLM 호출 6번 정도(1·2차 × 3부분)로 소액입니다.
-2. 수집 확인: "지금 확인"으로 첫 스캔(기준선 등록, AI 처리 없음)을 실행하고 6.10을 확인합니다. Browser Run 사용 시간이 듭니다.
-3. Phase 8: 정답 데이터로 정확도를 평가하고, R2 활성화 후 배포하고(`wrangler secret put` 포함), README를 작성합니다.
+PLAN.md의 Phase 9에 단계별 통과 기준을 적어 두었습니다. 요약하면 다음과 같습니다.
+
+1. **9.1** Google Sheets 연결 확인
+2. **9.2~9.7** 실제 PDF로 확인: 전체 흐름, 도구 순서, 중복·연식 시나리오, CPU 시간, 검토 화면, 헥사코드. 비용은 PDF 1개당 GLM 호출 약 10회 이내입니다.
+3. **9.8~9.9** 제조사 사이트에서 PDF 찾기, 첫 스캔(기준선 등록, AI 처리 없음)과 cron. Browser Run 사용 시간이 듭니다.
+4. **9.10** 정답 데이터 3종으로 정확도 평가(`npm run eval`)
+5. **9.11** R2 버킷 생성 → 비밀값 등록 → `./scripts/deploy.sh` → (결정 시) Cloudflare Access 적용
+6. **9.12** report.md 갱신과 마무리

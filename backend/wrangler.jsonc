@@ -1,6 +1,10 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "trimsheet-backend",
+	// No public URL: the frontend Worker reaches this Worker only through its service binding
+	// (PLAN.md §8.5). Cron triggers and Durable Objects keep working without a public route.
+	"workers_dev": false,
+	"preview_urls": false,
 	"compatibility_date": "2026-11-08",
 	"compatibility_flags": ["nodejs_compat"],
 	// Workers Logs + Traces. Flue adds agent-level spans to each trace:
