@@ -1,23 +1,29 @@
-# 배포 안내 (PLAN.md Phase 8.4 · 8.5)
+# 배포 안내
 
-TrimSheet는 Worker 두 개로 배포합니다.
+TrimSheet는 두 곳에 나눠 배포합니다.
 
-| Worker | 역할 | 공개 URL |
-| --- | --- | --- |
-| `trimsheet-backend` | API, Flue 에이전트(Durable Object), cron | **없음** (`workers_dev: false`) — 프론트엔드가 서비스 바인딩으로만 호출 |
-| `trimsheet-frontend` | 화면 + `/api/*` 프록시 | `https://trimsheet-frontend.<계정>.workers.dev` |
+| 부분 | 어디에 | 주소 | 하는 일 |
+| --- | --- | --- | --- |
+| 백엔드 `trimsheet-backend` | Cloudflare Workers | `https://trimsheet-backend.<계정>.workers.dev` | API, Flue 에이전트(Durable Object), 주간 cron, R2·Workers AI·Browser Run·Email |
+| 프론트엔드 `trimsheet` | Vercel | `https://<프로젝트>.vercel.app` | 화면(정적 파일) + `/api/*` 프록시 함수(`frontend/api/proxy.ts`) |
 
-## 1. 배포 전에 한 번만
+```
+브라우저 ─▶ Vercel (화면, /api 프록시 함수) ──x-trimsheet-key──▶ Cloudflare 백엔드
+```
+
+백엔드 주소는 공개되어 있지만, **`x-trimsheet-key` 헤더에 비밀 키(`API_KEY`)가 없으면 모든 `/api` 요청을 401로 거절**합니다. 키는 Cloudflare 비밀값과 Vercel 환경 변수에만 있고 브라우저에는 가지 않습니다.
+
+## 1. 처음 한 번만
 
 1. **Node 22** — 저장소 루트에서 `nvm use` (`.nvmrc` = 22.23.2)
-2. **로그인** — `cd backend && npx wrangler login`
-3. **R2 활성화** — Cloudflare 대시보드 → R2 → 활성화(결제 수단 등록이 필요할 수 있음) → 버킷 생성:
+2. **Cloudflare 로그인** — `cd backend && npx wrangler login`
+3. **R2** — 대시보드에서 R2를 활성화하고 버킷을 만듭니다.
 
 ```bash
 cd backend && npx wrangler r2 bucket create trimsheet-files
 ```
 
-4. **비밀값 등록** — 명령마다 값을 붙여 넣는 프롬프트가 나옵니다.
+4. **백엔드 비밀값** — 명령마다 값을 붙여 넣는 프롬프트가 나옵니다(공개 저장소라 설정 파일에 넣지 않음).
 
 ```bash
 cd backend && npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL
@@ -31,53 +37,51 @@ cd backend && npx wrangler secret put GOOGLE_PRIVATE_KEY
 cd backend && npx wrangler secret put GOOGLE_SPREADSHEET_ID
 ```
 
-```bash
-cd backend && npx wrangler secret put OPENAI_API_KEY
-```
+   - 선택: `OPENAI_API_KEY`(없으면 스캔본 PDF는 처리하지 않음), `NOTIFY_FROM`·`APP_URL`(이메일 알림, [email-setup.md](email-setup.md)).
 
-(`OPENAI_API_KEY`는 선택 — 없으면 스캔본 PDF는 처리하지 않고 GLM 결과를 그대로 씁니다.)
-
-5. **스프레드시트 ID** — 위 `GOOGLE_SPREADSHEET_ID` 비밀값으로 등록합니다(저장소가 공개라 설정 파일에 넣지 않음).
-6. **이메일 알림 (선택)** — [email-setup.md](email-setup.md)대로 도메인을 Email Service에 연결한 뒤 비밀값을 등록합니다. 하지 않아도 배포·동작에는 문제가 없고 메일만 나가지 않습니다.
+5. **공유 키** — 아래 스크립트가 새 키를 만들어 백엔드 `API_KEY`에 넣고 **클립보드에 복사**합니다(화면에 출력하지 않음).
 
 ```bash
-cd backend && npx wrangler secret put NOTIFY_FROM
+./scripts/rotate-api-key.sh
 ```
 
-```bash
-cd backend && npx wrangler secret put APP_URL
-```
-
-   > `wrangler.jsonc`에 `send_email` 바인딩이 있어 계정에 Email Service가 준비되지 않았다는 이유로 배포가 거절되면, 먼저 email-setup.md 1번을 하거나 바인딩 줄을 잠시 지우고 배포하세요.
+6. **Vercel 프로젝트** — vercel.com/new에서 GitHub 저장소를 Import하고:
+   - Root Directory: `frontend` (빌드 설정은 `frontend/vercel.json`에 있음)
+   - Environment Variables:
+     - `BACKEND_URL` = 백엔드 주소(`https://trimsheet-backend.<계정>.workers.dev`)
+     - `BACKEND_API_KEY` = 5번에서 복사한 값 (Sensitive, Production·Preview)
 
 ## 2. 배포
 
-저장소 루트에서:
+- **백엔드:** 저장소 루트에서 실행합니다. 검사·테스트·빌드 뒤 Cloudflare에 배포합니다.
 
 ```bash
 ./scripts/deploy.sh
 ```
 
-스크립트가 하는 일: Node 버전·로그인·R2 버킷·비밀값 확인 → 타입 체크·테스트·빌드 → **백엔드 먼저** 배포(서비스 바인딩 대상이 있어야 하므로) → 프론트엔드 배포.
+- **프론트엔드:** `main`에 푸시하면 Vercel이 자동으로 다시 배포합니다.
 
 ## 3. 배포 후 확인
 
-- `https://trimsheet-frontend.<계정>.workers.dev/api/health` → `{"ok":true,"sheets":"ok",...}`
-- Cloudflare 대시보드 → Workers → `trimsheet-backend` → Logs / Traces에 오류가 없는지
-- Triggers 탭에 cron `0 0 * * 1`(월 09:00 KST)이 있는지
-- **첫 cron 전에** 스프레드시트의 숨김 탭 `_설정`에서 `baseline_done`이 `FALSE`인지(첫 스캔은 기준선 등록만)
+- Vercel 주소를 열어 차종 목록이 보이는지
+- 키 없이 백엔드를 부르면 401인지: `curl -i https://trimsheet-backend.<계정>.workers.dev/api/health`
+- Cloudflare 대시보드 → Workers → `trimsheet-backend` → Logs에 오류가 없는지, Triggers에 cron `0 0 * * 1`(월 09:00 KST)이 있는지
+- 첫 cron 전에 시트의 숨김 탭 `_설정`에서 `baseline_done`이 `FALSE`인지(첫 스캔은 기준선 등록만)
 
-## 4. 접근 보호 (권장 — 결정 필요)
+## 4. 접근 보호
 
-인증이 없는 앱이라, 프론트엔드 URL을 아는 사람은 누구나 AI 작업을 실행해 비용을 발생시킬 수 있습니다. **Cloudflare Access로 본인 이메일만 허용**하는 것을 권장합니다(무료 플랜 50명까지).
+Vercel 프로젝트는 기본으로 **Vercel Authentication**이 켜져 있어(사용자 지정 도메인을 제외한 모든 배포), Vercel에 로그인한 본인만 열 수 있습니다. 다른 사람에게 보여 주려면 Vercel → Settings → Deployment Protection에서 바꾸세요. 공개하면 누구나 화면의 API를 부를 수 있습니다.
 
-1. 대시보드 → Workers & Pages → `trimsheet-frontend` → Settings → Domains & Routes
-2. `workers.dev` 항목의 **Cloudflare Access** 켜기 → 생성된 Access 애플리케이션의 정책에서 허용 이메일을 본인 이메일로 지정
-3. 시크릿 창에서 접속해 이메일 인증 화면이 나오는지 확인
+## 5. 키를 바꾸고 싶을 때
 
-백엔드는 공개 URL이 없으므로 따로 보호할 필요가 없습니다.
+`./scripts/rotate-api-key.sh`를 다시 실행한 뒤 Vercel의 `BACKEND_API_KEY`를 새 값으로 바꾸고 다시 배포합니다. 그 사이에는 화면의 API 호출이 401로 실패합니다.
 
-## 5. 되돌리기
+## 6. 되돌리기
 
-- 코드: 대시보드 → Worker → Deployments에서 이전 버전으로 롤백(데이터는 되돌아가지 않음)
-- 데이터: Google Sheets의 버전 기록, R2의 PDF는 내용 해시로 저장되어 덮어쓰지 않음
+- 백엔드: Cloudflare 대시보드 → Worker → Deployments에서 이전 버전으로 롤백
+- 프론트엔드: Vercel → Deployments에서 이전 배포를 Promote
+- 데이터: Google Sheets 버전 기록. R2의 PDF는 내용 해시로 저장되어 덮어쓰지 않음
+
+## 로컬 개발
+
+로컬은 그대로입니다. 프론트엔드 Worker가 서비스 바인딩으로 백엔드를 부르고, `backend/.env`의 `API_KEY`를 비워 두면 키 검사도 하지 않습니다.

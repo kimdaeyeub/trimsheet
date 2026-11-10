@@ -10,8 +10,8 @@
 ## 구조
 
 ```
-브라우저 ─▶ trimsheet-frontend (React SPA + /api 프록시)
-               │ Service Binding
+브라우저 ─▶ Vercel (React SPA + /api 프록시 함수)
+               │ HTTPS + x-trimsheet-key   (로컬 개발: Cloudflare 프론트엔드 Worker + 서비스 바인딩)
                ▼
            trimsheet-backend (Hono API + Flue 에이전트 TrimSheet·Watcher, cron)
                ├─ Workers AI (GLM-4.7-Flash) / OpenAI (폴백)
@@ -87,13 +87,13 @@ cd frontend && npm run lint && npm run build
 
 ## 배포
 
-[docs/deploy.md](docs/deploy.md)를 따라 R2 활성화와 비밀값 등록을 마친 뒤, 저장소 루트에서 실행합니다.
+**백엔드는 Cloudflare Workers, 프론트엔드는 Vercel**에 배포합니다. 처음 설정은 [docs/deploy.md](docs/deploy.md)를 따르고, 이후 백엔드는 저장소 루트에서 아래를 실행합니다. 프론트엔드는 `main`에 푸시하면 Vercel이 자동으로 배포합니다.
 
 ```bash
 ./scripts/deploy.sh
 ```
 
-백엔드는 공개 URL이 없습니다(`workers_dev: false`). 프론트엔드 URL은 Cloudflare Access로 본인만 접근하도록 막는 것을 권장합니다.
+백엔드 공개 주소는 비밀 키(`API_KEY`)가 있는 요청만 받습니다. 키는 Vercel의 `/api` 프록시 함수만 갖고 있습니다.
 
 ## 동작 규칙 요약
 

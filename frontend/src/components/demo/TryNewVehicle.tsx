@@ -1,3 +1,5 @@
+// Not shown for now (removed from App.tsx and VehicleBrowser.tsx on 2026-11-11 at the user's request).
+// To bring it back: render <TryNewVehicleButton /> in the header and <TryNewVehicleStatus /> above the list.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DemoStatus } from '@shared/types'
 import { CheckCircle2, CircleAlert, FlaskConical, X } from 'lucide-react'

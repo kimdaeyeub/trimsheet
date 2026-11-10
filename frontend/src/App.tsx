@@ -3,7 +3,6 @@ import { Mail, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { VehicleBrowser } from './components/catalog/VehicleBrowser'
 import { Logo } from './components/layout/Logo'
-import { TryNewVehicleButton } from './components/demo/TryNewVehicle'
 import { EmailNotifyModal } from './components/notify/EmailNotifyModal'
 import { Button } from './components/ui/Button'
 import { api } from './lib/api'
@@ -24,7 +23,6 @@ export function App() {
             <Logo />
           </a>
           <div className="flex items-center gap-2">
-            <TryNewVehicleButton />
             {emailReady && (
               <Button variant="secondary" size="sm" onClick={() => setNotifyOpen(true)} aria-haspopup="dialog" aria-label="이메일 알림" className="whitespace-nowrap">
                 <Mail className="size-3.5" aria-hidden />
