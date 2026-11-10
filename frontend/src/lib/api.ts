@@ -1,4 +1,4 @@
-import type { ApiError, CatalogDetail, CatalogPage, HealthResponse, NotifyStatus, NotifyTestResult, SettingsResponse } from '@shared/types'
+import type { ApiError, CatalogDetail, CatalogPage, DemoRun, DemoStatus, HealthResponse, NotifyStatus, NotifyTestResult, SettingsResponse } from '@shared/types'
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -57,4 +57,7 @@ export const api = {
   addNotifyEmail: (email: string) => request<NotifyStatus & { added: boolean }>('/notify', json('POST', { email })),
   removeNotifyEmail: (id: string) => request<NotifyStatus>(`/notify/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   testNotify: () => request<NotifyTestResult>('/notify/test', { method: 'POST' }),
+
+  demoStatus: () => request<DemoStatus>('/demo'),
+  startDemo: () => request<DemoRun>('/demo', { method: 'POST' }),
 }

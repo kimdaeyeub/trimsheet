@@ -300,3 +300,24 @@ export interface NotifyTestResult {
 	sent: number;
 	failed: number;
 }
+
+// ---- "Try a new vehicle" ---------------------------------------------------
+
+export interface DemoRun {
+	conversationId: string;
+	brand: string;
+	vehicleName: string;
+	sourceId: string;
+	/** KST, for display. */
+	startedAt: string;
+	startedAtIso: string;
+}
+
+export interface DemoStatus {
+	run: DemoRun | null;
+	/** Job stage from the 작업 tab, or idle / starting / timeout. Done: finalized, skipped, failed. */
+	stage: string;
+	jobId: string | null;
+	progress: string;
+	error: string;
+}

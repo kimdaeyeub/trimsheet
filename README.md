@@ -4,7 +4,7 @@
 
 - 에이전트: [Flue](https://flueframework.com) · 모델: Workers AI `@cf/zai-org/glm-4.7-flash` (PDF를 못 읽는 경우에만 OpenAI 폴백)
 - 실행 환경: Cloudflare Workers 2개 (`backend`, `frontend`) · 파일: R2 · 데이터: Google Sheets (DB 없음)
-- 화면: 시트 데이터를 **차종별로** 보여 주는 한 화면(브랜드·검색·페이지 나눔, 트림·선택 품목·색상·옵션 규칙). 새 데이터가 추가되면 **이메일 알림**을 보냅니다.
+- 화면: 시트 데이터를 **차종별로** 보여 주는 한 화면(브랜드·검색·페이지 나눔, 트림·선택 품목·색상·옵션 규칙). 새 데이터가 추가되면 **이메일 알림**을 보냅니다. **새 차종 테스트** 버튼으로 시트에 없는 제네시스 차종 하나를 골라 처음부터 끝까지 정리해 볼 수 있습니다(Workers AI 소액 과금).
 - 문서: [PLAN.md](PLAN.md)(설계·결정 기록) · [report.md](report.md)(진행 상황) · [docs/](docs/)(Sheets 연결, 이메일 알림, 배포, 사이트 조사)
 
 ## 구조
@@ -28,7 +28,7 @@
 | `backend/src/pipeline` | PDF 텍스트·표 복원, 추출 프롬프트·폴백, 검증, 1·2차 비교, 중복 판정, 헥사코드 |
 | `backend/src/sheets` | Google Sheets 연동(서비스 계정 인증, 탭 레이아웃, 읽기·쓰기) |
 | `backend/src/crawl`, `backend/src/scan` | 제조사 사이트 수집, 주간 스캔 |
-| `backend/src/catalog`, `backend/src/notify` | 차종별 화면용 데이터(페이지 나눔), 새 데이터 이메일 알림 |
+| `backend/src/catalog`, `backend/src/notify`, `backend/src/demo` | 차종별 화면용 데이터(페이지 나눔), 새 데이터 이메일 알림, 새 차종 테스트 |
 | `backend/src/eval`, `backend/scripts` | 정확도 평가, 정답 데이터 변환, 스모크 테스트 |
 | `frontend/src` | 화면 하나: 구글 시트 데이터를 차종별로 보여 줌(브랜드 필터·검색·페이지 나눔·트림/선택 품목/색상/옵션 규칙 상세) |
 | `shared/types.ts` | 프론트·백엔드 공용 타입 |

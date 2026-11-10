@@ -3,6 +3,7 @@ import { ExternalLink, Mail, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { VehicleBrowser } from './components/catalog/VehicleBrowser'
 import { Logo } from './components/layout/Logo'
+import { TryNewVehicleButton } from './components/demo/TryNewVehicle'
 import { EmailNotifyModal } from './components/notify/EmailNotifyModal'
 import { Button } from './components/ui/Button'
 import { buttonClass } from './components/ui/button-styles'
@@ -23,13 +24,14 @@ export function App() {
             <Logo />
           </a>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setNotifyOpen(true)} aria-haspopup="dialog">
+            <TryNewVehicleButton />
+            <Button variant="secondary" size="sm" onClick={() => setNotifyOpen(true)} aria-haspopup="dialog" aria-label="이메일 알림" className="whitespace-nowrap">
               <Mail className="size-3.5" aria-hidden />
-              이메일 알림
+              <span className="hidden sm:inline">이메일 알림</span>
             </Button>
             {sheetUrl && (
-              <a href={sheetUrl} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'sm')}>
-                구글 시트 열기
+              <a href={sheetUrl} target="_blank" rel="noreferrer" aria-label="구글 시트 열기" className={buttonClass('secondary', 'sm', 'whitespace-nowrap')}>
+                <span className="hidden sm:inline">구글 시트 열기</span>
                 <ExternalLink className="size-3.5" aria-hidden />
               </a>
             )}

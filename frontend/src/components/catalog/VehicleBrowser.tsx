@@ -9,6 +9,7 @@ import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { ErrorNotice } from '../ui/ErrorNotice'
 import { Spinner } from '../ui/Spinner'
+import { TryNewVehicleStatus } from '../demo/TryNewVehicle'
 import { Pagination } from './Pagination'
 import { VehicleCard } from './VehicleCard'
 import { VehicleDetail } from './VehicleDetail'
@@ -79,6 +80,8 @@ export function VehicleBrowser() {
             새로고침
           </Button>
         </div>
+
+        <TryNewVehicleStatus onOpen={(id) => set({ v: id })} />
 
         <label className="relative block">
           <span className="sr-only">차종 검색</span>

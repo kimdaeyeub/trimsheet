@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { handleError } from '../shared/errors.ts';
 import { catalog } from './catalog.ts';
 import { conversations } from './conversations.ts';
+import { demo } from './demo.ts';
 import { files } from './files.ts';
 import { jobs } from './jobs.ts';
 import { notifications } from './notifications.ts';
@@ -25,6 +26,7 @@ api.route('/vehicles', vehicles);
 api.route('/scan-runs', scans);
 api.route('/catalog', catalog);
 api.route('/notify', notify);
+api.route('/demo', demo);
 
 api.onError(handleError);
 api.notFound((c) => c.json({ error: { code: 'not_found', message: '없는 API 경로입니다.' } }, 404));
