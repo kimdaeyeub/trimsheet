@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink, TriangleAlert } from 'lucide-react'
+import { ExternalLink, Mail, TriangleAlert } from 'lucide-react'
+import { useState } from 'react'
 import { VehicleBrowser } from './components/catalog/VehicleBrowser'
 import { Logo } from './components/layout/Logo'
+import { EmailNotifyModal } from './components/notify/EmailNotifyModal'
+import { Button } from './components/ui/Button'
 import { buttonClass } from './components/ui/button-styles'
 import { api } from './lib/api'
 import { qk } from './lib/query'
@@ -10,6 +13,7 @@ export function App() {
   const health = useQuery({ queryKey: qk.health, queryFn: api.health, staleTime: 5 * 60_000 })
   const settings = useQuery({ queryKey: qk.settings, queryFn: api.settings, staleTime: 5 * 60_000 })
   const sheetUrl = settings.data?.spreadsheetUrl
+  const [notifyOpen, setNotifyOpen] = useState(false)
 
   return (
     <div className="flex min-h-full flex-col">
@@ -18,12 +22,18 @@ export function App() {
           <a href="/" aria-label="TrimSheet 처음 화면">
             <Logo />
           </a>
-          {sheetUrl && (
-            <a href={sheetUrl} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'sm')}>
-              구글 시트 열기
-              <ExternalLink className="size-3.5" aria-hidden />
-            </a>
-          )}
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setNotifyOpen(true)} aria-haspopup="dialog">
+              <Mail className="size-3.5" aria-hidden />
+              이메일 알림
+            </Button>
+            {sheetUrl && (
+              <a href={sheetUrl} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'sm')}>
+                구글 시트 열기
+                <ExternalLink className="size-3.5" aria-hidden />
+              </a>
+            )}
+          </div>
         </div>
         {health.data && health.data.sheets !== 'ok' && (
           <div className="border-t border-warning-500/20 bg-warning-50 px-4 py-2 text-center text-sm text-warning-700">
@@ -37,6 +47,7 @@ export function App() {
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
         <VehicleBrowser />
       </main>
+      <EmailNotifyModal open={notifyOpen} onClose={() => setNotifyOpen(false)} />
     </div>
   )
 }

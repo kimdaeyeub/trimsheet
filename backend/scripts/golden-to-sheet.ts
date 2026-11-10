@@ -2,7 +2,8 @@
 // or removes them again. Rows get jobId `golden_<n>` and status 확인 필요 so they are never
 // mistaken for processed data. Does not touch the 차량 tab, so duplicate detection is unaffected.
 //
-//   npx tsx scripts/golden-to-sheet.ts add <csv-dir>
+//   npx tsx scripts/golden-to-sheet.ts add <csv-dir> [hex.json]
+//     hex.json: { "<차종>": { "<색상명>|<코드>": "#RRGGBB" } } — e.g. from the PDF chip extractor
 //   npx tsx scripts/golden-to-sheet.ts remove
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -28,7 +29,8 @@ const env = loadEnv(join(import.meta.dirname, '..', '.env'));
 const repo = getRepo(env);
 if (repo.port.kind !== 'google') throw new Error('backend/.env에 Google Sheets 설정이 없습니다.');
 
-const [cmd, dir] = process.argv.slice(2);
+const [cmd, dir, hexFile] = process.argv.slice(2);
+const hexes: Record<string, Record<string, string>> = hexFile ? JSON.parse(readFileSync(hexFile, 'utf8')) : {};
 const now = new Date(Date.now() + 9 * 3600_000).toISOString().replace('T', ' ').slice(0, 19);
 const ITEM_TABS = [TABS.trim, TABS.color, TABS.option, TABS.rule, TABS.job] as TabSpec[];
 
@@ -62,13 +64,25 @@ if (cmd === 'remove') {
 			n += objs.length;
 		};
 		await put(TABS.trim as TabSpec, mine(csv.trim).map((r, i) => ({ ...head(i, 't'), name: r['트림'], price: Number(r['가격(원)']), evidencePage: page(r['근거 페이지']), ...tail })));
-		await put(TABS.color as TabSpec, mine(csv.color).map((r, i) => ({ ...head(i, 'c'), kind: r['구분'], name: r['색상명'], code: r['색상 코드'], applicableTrims: r['적용 트림'], evidencePage: page(r['근거 페이지']), ...tail })));
+		await put(
+			TABS.color as TabSpec,
+			mine(csv.color).map((r, i) => {
+				const hex = hexes[name]?.[`${r['색상명']}|${r['색상 코드']}`] ?? '';
+				return { ...head(i, 'c'), kind: r['구분'], name: r['색상명'], code: r['색상 코드'], hex, hexSource: hex ? 'PDF 칩' : '', applicableTrims: r['적용 트림'], evidencePage: page(r['근거 페이지']), ...tail };
+			}),
+		);
 		await put(TABS.option as TabSpec, mine(csv.option).map((r, i) => ({ ...head(i, 'o'), name: r['옵션명'], price: Number(r['가격(원)']), applicableTrims: r['적용 트림'], evidencePage: page(r['근거 페이지']), ...tail })));
 		await put(TABS.rule as TabSpec, mine(csv.rule).map((r, i) => ({ ...head(i, 'r'), type: r['유형'], subject: r['대상 옵션'], targets: r['관련 항목'], condition: r['조건'], result: r['결과'], footnoteText: r['원문 각주'], evidencePage: page(r['근거 페이지']), ...tail })));
 		await repo.createJobRow({ jobId, brand: BRAND[name] ?? '', vehicleName: name, modelYear: '2026', effectiveDate: EFFECTIVE[name] ?? '', stage: 'done', outcome: '정답 초안' });
 		console.log(`${name}: ${jobId}`);
 	}
-	console.log(`추가 ${n}행`);
+	// Paint the 미리보기 cells, as the real result writer does.
+	const colorSpec = TABS.color as TabSpec;
+	const after = toRecords(colorSpec, (await repo.port.readTabs([colorSpec.title]))[colorSpec.title] ?? []);
+	const col = colorSpec.columns.findIndex((c) => c.key === 'preview') + 1;
+	const cells = after.filter((r) => r.values.jobId?.startsWith(PREFIX) && /^#[0-9a-f]{6}$/i.test(r.values.hex)).map((r) => ({ row: r.row, col, hex: r.values.hex }));
+	await repo.port.setBackgrounds(colorSpec.title, cells);
+	console.log(`추가 ${n}행 · 색 견본 ${cells.length}칸`);
 } else {
 	console.error('usage: npx tsx scripts/golden-to-sheet.ts add <csv-dir> | remove');
 	process.exit(1);

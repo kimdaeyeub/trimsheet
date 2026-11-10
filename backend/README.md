@@ -1,37 +1,29 @@
-# backend
+# trimsheet-backend
 
-A [Flue](https://flueframework.com) agent project.
+TrimSheet 백엔드 Worker입니다. Hono REST API, [Flue](https://flueframework.com) 에이전트(`TrimSheet`: PDF 정리, `Watcher`: 주간 스캔), 주간 cron, Google Sheets 저장, 새 데이터 이메일 알림을 맡습니다. 전체 설명은 [../README.md](../README.md), 설계는 [../PLAN.md](../PLAN.md)를 참고하세요.
 
-## Setup
+## 실행
 
-```sh
-npm install
+Node 22(`.nvmrc`)가 필요합니다. `.env.example`을 복사해 `.env`를 채운 뒤 실행합니다.
+
+```bash
+npm install && npm run dev
 ```
 
-Then add a model provider API key to `.env` (any [provider Pi supports](https://pi.dev/docs/latest/providers#api-keys)).
+서버는 5174 포트에서 뜹니다. 보통은 프론트엔드(5173)가 `/api`를 이쪽으로 넘깁니다. 라우트 목록과 에이전트 호출 예시는 `src/app.ts`에 있습니다.
 
-## Talk to your agent
+## 확인
 
-```sh
-npx flue run src/agents/hello.ts --message "Say hello!"
+```bash
+npm run check:types && npm test
 ```
 
-Conversations are durable — pass `--id <id>` to continue one.
+## 스크립트
 
-## Develop
-
-```sh
-npm run dev
-```
-
-The Hello agent is served at `http://localhost:5173/agents/hello` — see `src/app.ts` for the route map and an example request.
-
-## Deploy
-
-```sh
-npm run deploy
-```
-
-## Learn more
-
-- [Flue docs](https://flueframework.com/docs/) — or `npx flue docs` from the terminal.
+| 명령 | 내용 |
+| --- | --- |
+| `npm run golden -- <csv-dir> <out.json> [차종]` | 정답 CSV → 평가용 JSON |
+| `npm run eval -- <jobId>=<golden.json>` | 정확도 평가 → `eval-report.md` |
+| `npx tsx scripts/golden-to-sheet.ts add <csv-dir> [hex.json]` | 정답 초안을 시트에 올려 화면에서 보기 (`remove`로 삭제) |
+| `scripts/smoke.sh <pdf>` | 실제 PDF 스모크 테스트(모델 호출 있음) |
+| `npm run cf-typegen` | `wrangler.jsonc`·`.env`를 바꾼 뒤 `Env` 타입 다시 만들기 |

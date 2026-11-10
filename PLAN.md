@@ -441,6 +441,17 @@ export type Extraction = {
 
 ---
 
+
+### 5.x 추가 API (Phase 10)
+
+| 메서드·경로 | 설명 |
+| --- | --- |
+| `GET /api/catalog?page&pageSize&brand&q` | 차종 목록(브랜드+차종+연식 단위, 최신 작업의 행만, `제외` 행 제외). 페이지 크기 최대 50. 응답에 브랜드별 개수. 백엔드가 30초 캐시(`fresh=1`이면 다시 읽음) |
+| `GET /api/catalog/:id` | 차종 하나의 트림·색상·선택 품목·옵션 규칙 (`id` = 작업ID) |
+| `GET /api/notify` | 알림 받을 주소(일부 가림)와 발송 상태(`ready`/`no_binding`/`no_sender`) |
+| `POST /api/notify` `{email}` · `DELETE /api/notify/:id` | 주소 등록(최대 20개, 중복 무시)·삭제 |
+| `POST /api/notify/test` | 등록된 주소마다 테스트 메일 |
+
 ## 6. 에이전트 설계 (Flue)
 
 ### 6.1 Flue 사용 원칙 (context7로 확인한 문서 내용)
@@ -772,83 +783,28 @@ export const SCAN_POLICY = {
 
 ## 8. 프론트엔드 설계
 
+> **2026-11-10 개편(Phase 10):** 채팅·작업 결과·검토·수집 현황 화면을 없애고, 시트 데이터를 차종별로 보여 주는 **화면 하나**로 바꿨습니다(사용자 요청). PDF 처리·주간 스캔·검토는 백엔드 에이전트와 Google Sheets에서 합니다. 이전 설계는 git 이력(커밋 `20141c4` 이전)에 있습니다.
+
 ### 8.1 패키지
-- 런타임: `@flue/react`, `@flue/sdk`(타입), `react-router`(v7, 라이브러리 모드), `@tanstack/react-query`, `lucide-react`, `clsx`
+- 런타임: `@tanstack/react-query`, `lucide-react`, `clsx` (`@flue/react`·`@flue/sdk`·`react-router`는 개편 때 제거)
 - 스타일: `tailwindcss` v4 + `@tailwindcss/vite`
 - 폰트: Pretendard(CDN)
-- 🔎 `@flue/react` 버전을 백엔드 `@flue/runtime`(2.2.x)과 맞춤.
 
 ### 8.2 디자인 토큰 — `src/styles/index.css`
+- 메인 컬러 `#3742fa`(`--color-primary-500`)와 50~900 단계, success/warning/danger, 배경 `#f7f8fc`, 카드 반경 12px.
+- 상태 배지: 확인 필요(주황), 전 트림(primary), 옵션 규칙 종류(상호배제 빨강·의존성 primary·포함 초록·트림 한정 주황).
+- 접근성: 대비 4.5:1 이상, 아이콘 버튼 `aria-label`, 탭은 `role="tab"`/`aria-selected`, 모달은 네이티브 `<dialog>`(포커스 가둠·Esc).
 
-```css
-@import "tailwindcss";
-
-@theme {
-  --color-primary-50:  #eef0ff;
-  --color-primary-100: #dfe2ff;
-  --color-primary-200: #c2c7ff;
-  --color-primary-300: #9aa1fd;
-  --color-primary-400: #6b74fb;
-  --color-primary-500: #3742fa;   /* 메인 컬러 */
-  --color-primary-600: #2a33e0;
-  --color-primary-700: #2128b5;
-  --color-primary-800: #1d238f;
-  --color-primary-900: #1c2171;
-
-  --color-success-500: #16a34a;   /* 자동 확정 */
-  --color-warning-500: #f59e0b;   /* 확인 필요 / 갱신 후보 / 보류 */
-  --color-danger-500:  #dc2626;   /* 실패/제외 */
-
-  --font-sans: "Pretendard Variable", Pretendard, system-ui, sans-serif;
-  --radius-card: 12px;
-}
-```
-- 배경 `#f7f8fc`, 카드 흰색 + `border-gray-200`. 주요 버튼 `bg-primary-500 hover:bg-primary-600 text-white`, 포커스 링 `ring-primary-300`. 사용자 말풍선 `bg-primary-500 text-white`.
-- 상태 배지: 자동 확정(초록), 확인 필요(주황), 승인(primary), 수정됨(primary-700), 제외(회색 취소선). 차량 상태: 처리 완료(초록), 기준선(회색), 갱신 후보(주황), 보류(주황 테두리), 이전 연식(회색 취소선).
-- 접근성: 대비 4.5:1 이상, 아이콘 버튼 `aria-label`, 채팅 목록 `aria-live="polite"`.
-
-### 8.3 화면
-
-**공통 레이아웃 (`AppLayout`)**
-- 왼쪽 사이드바(272px): 로고 "TrimSheet", `+ 새 작업`, 대화 목록(이름 변경·삭제), 하단: `작업 결과`(/jobs), `수집 현황`(/sources, 갱신 후보·보류 수 배지), `Google Sheets 열기`(외부 링크).
-- 상단 바: 알림 종(안 읽은 수, 드롭다운, 60초 폴링). `/api/health`가 `sheets: 'not_configured'`면 노란 배너 "Google Sheets가 아직 연결되지 않았습니다 — 결과는 임시 저장소에만 저장됩니다."
-- 모바일(<768px): 사이드바 드로어.
-
-**① 홈 (`/`)**: 큰 입력창 + 예시 칩("현대 더 뉴 스타리아 Electric 가격표 정리해 줘", "차종 페이지 URL 붙여넣기", "PDF 올리기"). 입력 시 `POST /api/conversations` → `/c/:id`.
-
-**② 대화 (`/c/:conversationId`)**
-- `useFlueAgent({ url: `/api/agents/trimsheet/${conversationId}` })`.
-- `MessageList`: `display === 'visible'`만. `text`(가벼운 마크다운, `/jobs/...`는 라우터 링크), `reasoning`(접힘), `file`(PDF 카드), `dynamic-tool` → `ToolCallCard`.
-- `ToolCallCard`:
-  - `prepare_source`: 페이지 수, 인식한 차종·연식·기준일, 스캔본·가격표 아님 경고, 예정 모델(GLM/OpenAI). `skipped: true`면 `SkippedCard`.
-  - **`SkippedCard`**: "이미 정리된 차량입니다" / "이전 연식입니다 (최신 2026년형)" / "연식을 확인할 수 없어 보류했습니다" + `기존 결과 보기`(→ `/jobs/:existingJobId`) + `그래도 정리하기` 버튼(클릭 시 "그래도 정리해 줘" 메시지 전송 → 에이전트가 `force: true`로 재호출).
-  - `extract_pass`: "1차 추출 중…"/"2차 추출 중…" → 완료 시 개수 + 사용 모델 배지(폴백이면 주황 "OpenAI 사용" 배지와 사유 툴팁).
-  - `finalize_job`: **결과 카드** — 개수, 확인 필요 K건, `검토하기`(→ `/jobs/:id`), `Google Sheets에서 보기`(→ `sheetUrl`).
-  - `find_pdfs_on_page`: 후보 목록(연식 표시) + 버려진 이전 연식 후보 접힘 목록 + `이 PDF 정리하기` 버튼.
-  - 실행 중(`input-available`)이고 `jobId`가 있으면 `GET /api/jobs/:id/state` 2초 폴링으로 `progressNote` 표시. `output-error`는 빨간 카드.
-- `Composer`: Enter 전송 / Shift+Enter 줄바꿈 / IME 조합 중 Enter 무시. 📎 PDF 첨부(드래그앤드롭, 50MB) → `POST /api/uploads` → 본문에 `[source:<id>]` 붙여 전송(화면엔 파일 칩, `alreadyKnown`이면 "이전에 올린 파일" 표시). 작업 중엔 전송 비활성(🔎 abort 지원 시 `중단` 버튼).
-- `StatusBar`: `connecting`/`error` + `다시 시도`(`refresh()`).
-- 첫 메시지 후 대화 제목을 앞 30자로 `PATCH`.
-
-**③ 작업 결과 목록 (`/jobs`)**: 차종 · 연식 · 브랜드 · 결과(완료/건너뜀/실패/가격표 아님) · 확인 필요 수 · 사용 모델 · 생성일 · `시트에서 보기`.
-
-**④ 검토 화면 (`/jobs/:jobId`)**
-- 상단: 차종명·연식, 기준일, 원본 PDF 열기, `Google Sheets에서 보기`, 안내 문구 "시트에서 직접 고친 내용도 이 화면에 반영됩니다".
-- 좌측(60%): 탭 `확인 필요(K)` · `트림` · `색상` · `선택 품목` · `옵션 규칙`.
-  - 행: 값 + 상태 배지 + 근거(`p.3`, 클릭 시 PDF 이동) + 사유 배지.
-  - 확인 필요 행: `승인` / `수정` / `제외` → `PATCH` → 시트 갱신 후 재조회. `수정`은 `EditItemDialog`(1차/2차 값 나란히, 선택 또는 직접 입력).
-  - 색상 행: hex 칩 + "근사값"/출처. 규칙 행: 원문 각주 인용 블록.
-- 우측(40%): `PdfViewer` — `<iframe src={`${pdfUrl}#page=${page}`}>`, 근거 클릭 시 `key` 변경으로 다시 로드.
-- 모든 확인 필요 처리 시 "검토 완료" 배너.
-
-**⑤ 수집 현황 (`/sources`)** (Phase 6)
-- 상단 요약: 마지막 스캔(모드: 기준선/일반), 다음 예정(매주 월 09:00), `지금 확인`, 최근 실패 사유. 최초 기준선 전이면 "첫 확인에서는 현재 판매 중인 차량을 **기준선으로 등록만** 하고 처리하지 않습니다" 안내.
-- 필터 탭: `전체` · `갱신 후보` · `보류` · `기준선` · `처리 완료` · `이전 연식`, 브랜드 선택.
-- 차량 표: 차종 · 연식 · 기준일 · 상태 배지 · 판정 사유 · 최근 작업 · 동작(`처리`/`무시`/`결과 보기`). 체크박스로 여러 개 선택 후 `선택 처리`(최대 `maxAutoProcessPerScan`개).
+### 8.3 화면 — 차종별 가격 정보 (`src/App.tsx`, `components/catalog/*`)
+- **상단 바**: 로고, `이메일 알림`(모달), `구글 시트 열기`. Sheets 미연결·오류면 노란 배너.
+- **왼쪽 목록** (`VehicleBrowser`): 브랜드 탭(전체·현대·기아·제네시스, 개수), 차종 검색(250ms 지연), 차종 카드(가격대·트림/옵션/색상/규칙 수·확인 필요 수), 페이지 번호(10개씩, `1 … 5 6 7 … 20`). `새로고침`은 백엔드 캐시를 건너뛰고 다시 읽음.
+- **오른쪽 상세** (`VehicleDetail`): 브랜드·차종·연식·가격대·기준일·정리한 날, PDF·원본 링크, 확인 필요 안내. 탭: 트림(가격·비고·근거 쪽) / 선택 품목(가격·선택 가능 트림 칩, 모든 트림이면 "전 트림") / 색상(외장·내장, 색 견본·코드) / 옵션 규칙(종류·대상→관련·조건·결과·원문 각주). 확인 필요 행은 노란 배경.
+- **상태는 주소에** (`lib/url-state.ts`): `?brand=&q=&page=&v=`. 새로고침·공유·뒤로 가기가 그대로 동작. 범위를 벗어난 페이지는 마지막 페이지로 고침.
+- **모바일**(<1024px): 목록 → 상세 전환, `목록으로` 버튼. 표는 가로 스크롤.
+- **이메일 알림 모달** (`components/notify/EmailNotifyModal.tsx`): 주소 등록(형식 검사)·목록(일부 가림)·삭제·테스트 메일. 발송 설정이 없으면 "주소만 저장" 안내. 자세한 동작은 [docs/email-setup.md](docs/email-setup.md).
 
 ### 8.4 상태 관리
-- TanStack Query: `['conversations']`, `['jobs']`, `['job', id]`, `['notifications']`, `['vehicles', filter]`, `['settings']`. 시트 기반 쿼리는 `staleTime: 30_000`.
-- `finalize_job` 카드가 `output-available`이 되면 `['jobs']`, `['notifications']`, `['vehicles']` invalidate.
+- TanStack Query: `['catalog', page, size, brand, q]`(이전 페이지 데이터를 유지하며 로딩), `['vehicle', id]`, `['notify']`, `['health']`, `['settings']`. `staleTime: 30_000`.
 
 ---
 
@@ -1104,15 +1060,15 @@ export const SCAN_POLICY = {
   - 정답 데이터 3종(CSV, 시트와 같은 열 구성) — 9.10 전까지
   - 결정: 배포 후 Cloudflare Access 적용 여부(9.11)
 - [x] **9.1 Google Sheets 연결** (← 1.8, 2026-11-10 통과) — dev 서버 재시작 후 `GET /api/health`가 `sheets: "ok"`, 스프레드시트에 탭 12개(숨김 3개)와 헤더·드롭다운이 생성됨. 화면의 노란 배너가 사라짐.
-- [ ] **9.2 ⚡ 실제 PDF 1개 처리** (← 2.0, 2.1, 3.10) — 화면에서 PDF를 올려 대화 1회. 예상 GLM 호출 ≈ 대화 4~6턴 + 추출 6회.
+- [ ] **9.2 ⚡ 실제 PDF 1개 처리** (← 2.0, 2.1, 3.10) — ~~화면에서 PDF를 올려 대화 1회.~~ 채팅 화면은 Phase 10에서 없앴으므로 `POST /api/uploads` → `POST /api/agents/trimsheet/<id>`(`backend/src/app.ts` 주석의 curl 예시)로 대화 1회. 예상 GLM 호출 ≈ 대화 4~6턴 + 추출 6회.
   - 통과 기준: 도구 카드가 분석→1차→2차→마감 순서로 진행, 결과 카드가 뜨고 시트 탭에 행이 생김, 모든 행에 근거 페이지, 규칙 행에 각주 원문.
   - 함께 확인: GLM 구조화 출력이 스키마를 통과하는지, 도구 안 `cloudflare:workers` env 접근(`shared/env.ts` TODO), 폴백이 필요한 경우 OpenAI 모델 ID(`shared/config.ts` TODO). 결과를 결정 기록에.
   - 실패 시: report.md §4-2의 대안(섹션 분할, JSON 모드, 단일 도구 모드, env 접근 방식 교체).
 - [ ] **9.3 ⚡ 도구 순서 안정성** (← 2.12) — 같은 PDF로 2회 더 실행(첫 판정). 순서 이탈이 있으면 사용자 동의 후 10회까지 늘려 측정. 3/10 이상 이탈이면 단일 도구 모드 전환.
 - [ ] **9.4 중복·연식 시나리오** (← 2.13) — (a) 같은 PDF 재업로드 → 모델 호출 없이 건너뜀 카드, (b) 이전 연식 PDF → "이전 연식" 건너뜀, (c) "그래도 정리해 줘" → force로 처리되고 시트의 같은 차량 행이 교체됨.
 - [ ] **9.5 CPU·시간 측정** (← 2.15) — Workers Logs/Traces에서 `prepare_source`·`finalize_job`의 CPU 시간 확인. 무료 플랜 한도를 넘으면 `limits.cpu_ms` 상향(유료 플랜) 여부를 사용자에게 묻기.
-- [ ] **9.6 검토 화면** (← Phase 4 실데이터) — 실제 결과로 승인·수정·제외, 일괄 승인, 근거 클릭 시 PDF 페이지 이동, 시트에서 직접 고친 값이 화면에 반영되는지.
-- [ ] **9.7 헥사코드** (← 7.1) — 실제 PDF의 색상 칩이 벡터/이미지 중 무엇인지, `PDF 칩` 출처로 채워진 비율. 짝짓기가 틀리면 거리 기준(`hex.ts` `matchChips`) 조정 + 테스트 추가.
+- [ ] **9.6 검토** (← Phase 4 실데이터) — 검토 화면은 Phase 10에서 없앰. Google Sheets에서 상태 열(승인·수정됨·제외)을 바꾸고 차종 화면에 반영되는지 확인. 이전 기준: 실제 결과로 승인·수정·제외, 일괄 승인, 근거 클릭 시 PDF 페이지 이동, 시트에서 직접 고친 값이 화면에 반영되는지.
+- [~] **9.7 헥사코드** (← 7.1) — 2026-11-10 실제 PDF 3개로 확인: 칩은 모두 **이미지**(현대 178×23으로 잘린 사진, 기아 107×36). 클립 영역 추적·이미지 가로세로비 8:1·금속성 도장 허용·색상명 밝기 검사·같은 색 칩 순서 짝짓기 금지로 고쳐 **외장 19/19** 일치. 내장은 시트 사진이라 제외. 남은 것: 실제 처리 흐름에서 `PDF 칩` 출처로 채워지는지. 원래 기준: 실제 PDF의 색상 칩이 벡터/이미지 중 무엇인지, `PDF 칩` 출처로 채워진 비율. 짝짓기가 틀리면 거리 기준(`hex.ts` `matchChips`) 조정 + 테스트 추가.
 - [ ] **9.8 ⚡ 차종 페이지에서 PDF 찾기** (← 5.6 실행) — 현대·기아·제네시스 차종(또는 목록) 페이지 URL을 각각 채팅에 붙여 `find_pdfs_on_page` 결과 확인. Browser Run은 현대·기아에서만 사용. 실패 시 `docs/site-notes.md`·어댑터 선택자 수정.
 - [ ] **9.9 ⚡ 첫 스캔(기준선)과 cron** (← 6.10) — 수집 현황에서 "지금 확인" 1회.
   - 통과 기준: 세 브랜드 차량이 `기준선`으로 등록, AI 처리 0건, `_설정 baseline_done=TRUE`, 스캔 기록·알림 생성, 상용차 제외.
@@ -1125,6 +1081,14 @@ export const SCAN_POLICY = {
 - [ ] **9.12 마무리** — report.md 갱신(남은 위험·결정), 우회 항목 정리 가능 여부 확인(pi-ai 버전 고정 해제, compatibility_date 갱신, 번들 크기), 커밋·푸시.
 
 **완료 조건**: 9.1~9.11 통과 기준을 모두 만족하고, 배포된 앱에서 실제 가격표가 Google Sheets까지 정리된다.
+
+### Phase 10 — 화면 개편과 이메일 알림 (2026-11-10, 사용자 요청)
+
+- [x] **10.1** 채팅 UI 제거 → 시트 데이터를 차종별로 보여 주는 화면 하나(§8). 백엔드 `GET /api/catalog`(페이지 나눔·브랜드·검색·30초 캐시), `GET /api/catalog/:id`.
+- [x] **10.2** 정답 초안을 시트에 올려 화면에서 검토: `backend/scripts/golden-to-sheet.ts add|remove` (작업ID `golden_…`, 상태 확인 필요, `차량` 탭은 건드리지 않음).
+- [x] **10.3** 색상 견본이 안 보이던 문제: 정답 초안에 헥사코드가 없었고, 실제 PDF에서는 칩 추출이 틀렸음 → 9.7 수정 후 초안에 외장 헥사코드를 채움.
+- [x] **10.4** 새 데이터 이메일 알림: `send_email` 바인딩, 주소는 `_설정` 탭 `notify.emails`, `finalize_job` 뒤 별도 단계에서 발송(실패해도 작업은 성공), 화면 모달. 설정은 [docs/email-setup.md](docs/email-setup.md).
+- [ ] **10.5** (사용자) 도메인을 Email Service에 연결하고 받는 주소 인증, `NOTIFY_FROM`·`APP_URL` 등록 → 배포 후 테스트 메일로 확인.
 
 ## 10. 테스트 전략
 
@@ -1242,6 +1206,12 @@ export const SCAN_POLICY = {
 | 2026-11-10 | Phase 8은 평가·배포 **도구와 문서**까지, 실제 확인·배포는 **Phase 9**로 분리 | 사용자 요청(데이터는 Phase 8 직후 제공) |
 | 2026-11-10 | 백엔드 `workers_dev: false`·`preview_urls: false` | 공개 URL 없이 서비스 바인딩으로만 접근(비용·보안) |
 | 2026-11-10 | `GOOGLE_SPREADSHEET_ID`를 `wrangler.jsonc` vars에서 빼고 `.env`/`wrangler secret`으로 | 공개 저장소에 시트 ID를 남기지 않음 |
+| 2026-11-10 | 연식 표기가 없으면 가격표 기준일 연도 → 처음 받은 날 연도로 추정(`modelYearSource`), R1(같은 파일)은 모든 차량에서 확인 | 실제 3사 가격표 모두 "20XX년형" 없음 — 그대로면 전부 보류 |
+| 2026-11-10 | 옵션·색상 이름이 한 목록에서 반복될 때만 가격·코드로 구분 | 트림별 가격이 다른 같은 옵션을 중복으로 처리하지 않되, 가격 오독은 1·2차 불일치로 남김 |
+| 2026-11-10 | 평가 매칭: 느슨한 이름 → 유사도 0.85(숫자가 같을 때만), 트림 목록은 짝지은 트림으로 비교 | 띄어쓰기·로마 숫자 차이로 누락 집계되지 않게, 3인승/5인승은 섞이지 않게 |
+| 2026-11-10 | 헥사코드: 클립 영역을 칩 크기로, 이미지 칩 가로세로비 8:1·크기 200pt까지, 픽셀 30% 이상 일치면 단색, 이름과 밝기가 어긋나면 버림, 읽기 순서 짝짓기는 색이 모두 다를 때만, 내장 제외 | 실제 PDF 3개에서 외장 19/19 일치, 현대 로고 아이콘·기아 시트 사진 오인 제거 |
+| 2026-11-10 | 프론트엔드를 차종별 화면 하나로(채팅·검토·수집 현황 화면 제거), 페이지 나눔은 백엔드에서 | 사용자 요청. Sheets API 한도 때문에 백엔드 30초 캐시 |
+| 2026-11-10 | 이메일 알림은 Cloudflare Email Service 바인딩, 주소는 시트 `_설정`에 저장, 화면엔 일부만 표시, 주소마다 따로 발송 | DB 없음 원칙 유지. 무료 플랜은 인증된 주소로만 발송 가능 — 과금 최소화 |
 | (미정) | Pass B를 OpenAI로 고정할지 | Phase 8 정확도 결과를 보고 사용자가 결정 |
 |  |  |  |
 

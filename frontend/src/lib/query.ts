@@ -16,4 +16,5 @@ export const qk = {
   settings: ['settings'] as const,
   catalog: (page: number, pageSize: number, brand: string, q: string) => ['catalog', page, pageSize, brand, q] as const,
   vehicle: (id: string) => ['vehicle', id] as const,
+  notify: ['notify'] as const,
 }

@@ -31,9 +31,13 @@ async function colorPage(): Promise<ArrayBuffer> {
 describe('representativeColor', () => {
 	it('returns the median of a solid or glossy swatch and rejects gradients', () => {
 		const solid = new Uint8ClampedArray(Array.from({ length: 100 }, () => [10, 20, 30]).flat());
-		expect(representativeColor(solid, 10, 10, 3)).toEqual({ hex: '#0A141E', uniform: true });
-		const gradient = new Uint8ClampedArray(Array.from({ length: 100 }, (_, i) => [(i % 10) * 25, (i % 10) * 25, 0]).flat());
-		expect(representativeColor(gradient, 10, 10, 3).uniform).toBe(false);
+		expect(representativeColor(solid, 10, 10, 3)).toMatchObject({ hex: '#0A141E', uniform: true, share: 1 });
+		// Photo-like pixels (wheel photos on the G80 sheet scored 0.07–0.29) are rejected.
+		const photo = new Uint8ClampedArray(Array.from({ length: 100 }, (_, i) => [(i * 37) % 256, (i * 91) % 256, (i * 53) % 256]).flat());
+		expect(representativeColor(photo, 10, 10, 3).uniform).toBe(false);
+		// Metallic paint with highlights (Staria yellow scored 0.34) is accepted.
+		const metallic = new Uint8ClampedArray(Array.from({ length: 100 }, (_, i) => (i % 10 < 4 ? [210, 169, 25] : [255, 240 - (i % 10) * 9, 120])).flat());
+		expect(representativeColor(metallic, 10, 10, 3)).toMatchObject({ uniform: true });
 		expect(representativeColor(new Uint8ClampedArray(Array(16).fill(128)), 4, 4, 1).hex).toBe('#808080');
 	});
 
@@ -79,5 +83,29 @@ describe('findChips + matchChips', () => {
 		expect([two.get('a')?.hex, two.get('b')?.hex]).toEqual(['#000001', '#000002']); // top first
 		const three = matchChips([{ key: 'a', name: 'A', page: 3 }, { key: 'b', name: 'B', page: 3 }, { key: 'c', name: 'C', page: 3 }], chips, new Map());
 		expect(three.size).toBe(0);
+	});
+});
+
+describe('real-sheet layouts (2026-11 samples)', () => {
+	it('accepts wide image strips but keeps vector bars out', () => {
+		expect(chipSized(107, 36, 'image')).toBe(true); // Kia
+		expect(chipSized(178, 23, 'image')).toBe(true); // Hyundai, clipped
+		expect(chipSized(178, 23)).toBe(false); // the same shape as a vector is a table bar
+		expect(chipSized(400, 60, 'image')).toBe(false);
+	});
+
+	it('rejects matches that contradict the colour name', async () => {
+		const { plausible } = await import('../src/pipeline/hex.ts');
+		expect(plausible('크리미 화이트', '#EFEEF3')).toBe(true);
+		expect(plausible('크리미 화이트', '#002F6C')).toBe(false); // Staria logo icon
+		expect(plausible('오로라 블랙 펄', '#949F99')).toBe(false);
+		expect(plausible('옵시디언 블랙/세비야 레드 투톤', '#F0F0F0')).toBe(true);
+		expect(plausible('세레스 블루', '#2E3A48')).toBe(true);
+	});
+
+	it('does not fall back to reading order onto identical chips', () => {
+		const chips = [0, 1, 2].map((i) => ({ page: 1, x: 20 + i * 20, y: 700, w: 14, h: 17, hex: '#002F6C', source: 'vector' as const }));
+		const colors = ['A', 'B', 'C'].map((n) => ({ key: n, name: `${n}색`, page: 1 }));
+		expect(matchChips(colors, chips, new Map()).size).toBe(0);
 	});
 });

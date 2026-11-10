@@ -38,6 +38,17 @@ cd backend && npx wrangler secret put OPENAI_API_KEY
 (`OPENAI_API_KEY`는 선택 — 없으면 스캔본 PDF는 처리하지 않고 GLM 결과를 그대로 씁니다.)
 
 5. **스프레드시트 ID** — 위 `GOOGLE_SPREADSHEET_ID` 비밀값으로 등록합니다(저장소가 공개라 설정 파일에 넣지 않음).
+6. **이메일 알림 (선택)** — [email-setup.md](email-setup.md)대로 도메인을 Email Service에 연결한 뒤 비밀값을 등록합니다. 하지 않아도 배포·동작에는 문제가 없고 메일만 나가지 않습니다.
+
+```bash
+cd backend && npx wrangler secret put NOTIFY_FROM
+```
+
+```bash
+cd backend && npx wrangler secret put APP_URL
+```
+
+   > `wrangler.jsonc`에 `send_email` 바인딩이 있어 계정에 Email Service가 준비되지 않았다는 이유로 배포가 거절되면, 먼저 email-setup.md 1번을 하거나 바인딩 줄을 잠시 지우고 배포하세요.
 
 ## 2. 배포
 

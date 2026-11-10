@@ -16,6 +16,7 @@ for s in GOOGLE_SPREADSHEET_ID GOOGLE_SERVICE_ACCOUNT_EMAIL GOOGLE_PRIVATE_KEY; 
   echo "$SECRETS" | grep -q "\"$s\"" || echo "⚠️  secret $s is not set — run: (cd backend && npx wrangler secret put $s)"
 done
 echo "$SECRETS" | grep -q '"OPENAI_API_KEY"' || echo "ℹ️  OPENAI_API_KEY not set — OpenAI fallback disabled (optional)"
+echo "$SECRETS" | grep -q '"NOTIFY_FROM"' || echo "ℹ️  NOTIFY_FROM not set — new-data emails are not sent (optional, docs/email-setup.md)"
 
 echo "▶ tests"
 (cd backend && npm run check:types && npm test)

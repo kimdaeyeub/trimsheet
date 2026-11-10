@@ -278,3 +278,25 @@ export interface CatalogPage {
 	/** Vehicle counts per brand over the whole catalog (before the brand filter). */
 	brands: Record<string, number>;
 }
+
+// ---- New-data email --------------------------------------------------------
+
+export interface NotifySubscriber {
+	id: string;
+	/** Masked address ("ja******@example.com"); full addresses never leave the backend. */
+	masked: string;
+	addedAt: string;
+}
+
+export interface NotifyStatus {
+	subscribers: NotifySubscriber[];
+	/** ready: sends mail · no_binding: EMAIL binding missing · no_sender: NOTIFY_FROM not set */
+	sending: 'ready' | 'no_binding' | 'no_sender';
+	max: number;
+}
+
+export interface NotifyTestResult {
+	sending: NotifyStatus['sending'];
+	sent: number;
+	failed: number;
+}

@@ -16,10 +16,15 @@
 	"r2_buckets": [{ "binding": "FILES", "bucket_name": "trimsheet-files" }],
 	// Browser Run for crawling manufacturer pages (used from Phase 5).
 	"browser": { "binding": "BROWSER" },
+	// New-data email (Cloudflare Email Service). Needs a domain onboarded to Email Service and the
+	// sender address in NOTIFY_FROM. Workers Free can only send to verified destination addresses
+	// (Email Routing); any address needs Workers Paid. Locally the binding is simulated (no mail sent).
+	"send_email": [{ "name": "EMAIL" }],
 	// Weekly scan: Monday 00:00 UTC = 09:00 KST (used from Phase 6).
 	"triggers": { "crons": ["0 0 * * 1"] },
 	// Google Sheets and OpenAI settings are NOT kept here (this repository is public):
-	// GOOGLE_SPREADSHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, OPENAI_API_KEY
+	// GOOGLE_SPREADSHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, OPENAI_API_KEY,
+	// NOTIFY_FROM (email sender, e.g. trimsheet@your-domain.com), APP_URL (link in emails)
 	// live in backend/.env locally and are set with `wrangler secret put` in production.
 	// Every agent generates a Durable Object class named after its identity
 	// (TrimSheet -> FlueTrimSheetAgent). Append a new tag when you add an agent:

@@ -1,6 +1,7 @@
 import { defineTool } from '@flue/runtime';
 import * as v from 'valibot';
 import { pageLookup } from '../pipeline/evidence.ts';
+import { newDataMail, sendToSubscribers } from '../notify/email.ts';
 import { enrichHexes } from '../pipeline/hex.ts';
 import { reconcile } from '../pipeline/reconcile.ts';
 import type { Extraction } from '../pipeline/schema.ts';
@@ -23,7 +24,7 @@ export const finalizeJob = defineTool({
 	durable: true,
 	timeoutMs: 300_000,
 	async run({ data, step, log }) {
-		const { bucket, repo, sheetsConfigured } = deps();
+		const { env, bucket, repo, sheetsConfigured } = deps();
 		const { jobId } = data;
 		const state = await loadState(bucket, jobId);
 		// Two-pass jobs need pass B — except documents pass A already found not to be price sheets.
@@ -135,6 +136,23 @@ export const finalizeJob = defineTool({
 			await release();
 			await updateState(bucket, jobId, (s) => ({ ...s, stage: 'finalized', outcome: 'ok', counts: c, progressNote: '정리 완료' }));
 			return true;
+		});
+
+		// New-data email. A separate durable step so a retry of the sheet write never mails twice,
+		// and a mail failure (e.g. unverified address on Workers Free) never fails the job.
+		await step.do('notify-email', async () => {
+			try {
+				const mail = newDataMail(
+					{ vehicleName, modelYear, brand: brand ? BRAND_LABEL[brand] : '', counts: result.counts, jobId, replaced: summary.replacedRows > 0 },
+					env.APP_URL,
+				);
+				const r = await sendToSubscribers(env, repo, mail);
+				jlog('info', 'notify_email', { jobId, ...r });
+				return r.sent;
+			} catch (err) {
+				jlog('warn', 'notify_email_failed', { jobId, message: err instanceof Error ? err.message : String(err) });
+				return 0;
+			}
 		});
 
 		return {

@@ -7,6 +7,7 @@ import { conversations } from './conversations.ts';
 import { files } from './files.ts';
 import { jobs } from './jobs.ts';
 import { notifications } from './notifications.ts';
+import { notify } from './notify.ts';
 import { scans } from './scans.ts';
 import { system } from './system.ts';
 import { uploads } from './uploads.ts';
@@ -23,6 +24,7 @@ api.route('/notifications', notifications);
 api.route('/vehicles', vehicles);
 api.route('/scan-runs', scans);
 api.route('/catalog', catalog);
+api.route('/notify', notify);
 
 api.onError(handleError);
 api.notFound((c) => c.json({ error: { code: 'not_found', message: '없는 API 경로입니다.' } }, 404));

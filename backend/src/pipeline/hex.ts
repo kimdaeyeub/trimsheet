@@ -40,11 +40,26 @@ function rectOf(m: Matrix, x0: number, y0: number, x1: number, y1: number) {
 	return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
-/** Swatch-sized: 6–150 pt per side, not a long bar or a table cell. */
-export function chipSized(w: number, h: number): boolean {
-	if (w < 6 || h < 6 || w > 150 || h > 150) return false;
+/**
+ * Swatch-sized. Vector fills: 6–150 pt, near-square (bars and table cells are vector too).
+ * Images: up to 200 pt and 8:1 — real price sheets crop paint photos into wide strips
+ * (Kia 107×36, Hyundai 178×23).
+ */
+export function chipSized(w: number, h: number, source: Chip['source'] = 'vector'): boolean {
+	const [max, maxRatio] = source === 'image' ? [200, 8] : [150, 2.5];
+	if (w < 6 || h < 6 || w > max || h > max) return false;
 	const ratio = w / h;
-	return ratio >= 0.4 && ratio <= 2.5;
+	return ratio >= 1 / maxRatio && ratio <= maxRatio;
+}
+
+type Rect = { x: number; y: number; w: number; h: number };
+function intersect(a: Rect, b: Rect | null): Rect | null {
+	if (!b) return a;
+	const x = Math.max(a.x, b.x);
+	const y = Math.max(a.y, b.y);
+	const w = Math.min(a.x + a.w, b.x + b.w) - x;
+	const h = Math.min(a.y + a.h, b.y + b.h) - y;
+	return w > 0 && h > 0 ? { x, y, w, h } : null;
 }
 
 const toHex = (r: number, g: number, b: number) => `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase()}`;
@@ -53,7 +68,12 @@ const toHex = (r: number, g: number, b: number) => `#${[r, g, b].map((v) => Math
  * Median colour of the central 80% of an image, plus whether it is (roughly) one colour.
  * Glossy paint renders are accepted; photos and gradients are rejected.
  */
-export function representativeColor(data: ArrayLike<number>, width: number, height: number, channels: 1 | 3 | 4): { hex: string; uniform: boolean } {
+export function representativeColor(
+	data: ArrayLike<number>,
+	width: number,
+	height: number,
+	channels: 1 | 3 | 4,
+): { hex: string; uniform: boolean; share: number } {
 	const x0 = Math.floor(width * 0.1);
 	const x1 = Math.max(x0 + 1, Math.ceil(width * 0.9));
 	const y0 = Math.floor(height * 0.1);
@@ -72,7 +92,9 @@ export function representativeColor(data: ArrayLike<number>, width: number, heig
 	const [mr, mg, mb] = [med([...r]), med([...g]), med([...b])];
 	let close = 0;
 	for (let i = 0; i < r.length; i++) if (Math.abs(r[i] - mr) <= 24 && Math.abs(g[i] - mg) <= 24 && Math.abs(b[i] - mb) <= 24) close++;
-	return { hex: toHex(mr, mg, mb), uniform: r.length > 0 && close / r.length >= 0.5 };
+	const share = r.length ? close / r.length : 0;
+	// Metallic / pearl paint renders have highlights; 30% of pixels near the median is enough.
+	return { hex: toHex(mr, mg, mb), uniform: share >= 0.3, share };
 }
 
 interface OperatorList {
@@ -88,22 +110,29 @@ export function chipsFromOperators(
 	images: Map<string, { hex: string; uniform: boolean }>,
 ): Chip[] {
 	const fillOps = new Set([OPS.fill, OPS.eoFill, OPS.fillStroke, OPS.eoFillStroke, OPS.closeFillStroke, OPS.closeEOFillStroke]);
-	const stack: { ctm: Matrix; fill: string | null }[] = [];
+	const stack: { ctm: Matrix; fill: string | null; clip: Rect | null }[] = [];
 	let ctm: Matrix = IDENTITY;
 	let fill: string | null = null;
+	// Clip region (bbox) of the current graphics state. A clip op marks the next path as the clip.
+	let clip: Rect | null = null;
+	let clipNext = false;
 	const chips: Chip[] = [];
 
 	ops.fnArray.forEach((fn, i) => {
 		const args = ops.argsArray[i];
 		switch (fn) {
 			case OPS.save:
-				stack.push({ ctm, fill });
+				stack.push({ ctm, fill, clip });
 				break;
 			case OPS.restore: {
 				const s = stack.pop();
-				if (s) ({ ctm, fill } = s);
+				if (s) ({ ctm, fill, clip } = s);
 				break;
 			}
+			case OPS.clip:
+			case OPS.eoClip:
+				clipNext = true;
+				break;
 			case OPS.transform:
 				ctm = multiply(ctm, args as unknown as Matrix);
 				break;
@@ -115,6 +144,10 @@ export function chipsFromOperators(
 			case OPS.constructPath: {
 				const paintOp = args?.[0] as number;
 				const bbox = args?.[2] as ArrayLike<number> | undefined;
+				if (clipNext && bbox && bbox.length === 4) {
+					clip = intersect(rectOf(ctm, bbox[0], bbox[1], bbox[2], bbox[3]), clip) ?? { x: 0, y: 0, w: 0, h: 0 };
+					clipNext = false;
+				}
 				if (!fill || !fillOps.has(paintOp) || !bbox || bbox.length !== 4) break;
 				const r = rectOf(ctm, bbox[0], bbox[1], bbox[2], bbox[3]);
 				if (chipSized(r.w, r.h)) chips.push({ page, ...r, hex: fill, source: 'vector' });
@@ -123,8 +156,9 @@ export function chipsFromOperators(
 			case OPS.paintImageXObject: {
 				const img = images.get(String(args?.[0]));
 				if (!img?.uniform) break;
-				const r = rectOf(ctm, 0, 0, 1, 1);
-				if (chipSized(r.w, r.h)) chips.push({ page, ...r, hex: img.hex, source: 'image' });
+				// The visible part: paint photos are often larger images cropped by a clip path.
+				const r = intersect(rectOf(ctm, 0, 0, 1, 1), clip);
+				if (r && chipSized(r.w, r.h, 'image')) chips.push({ page, ...r, hex: img.hex, source: 'image' });
 				break;
 			}
 		}
@@ -199,17 +233,41 @@ export function matchChips(colors: ColorTarget[], chips: Chip[], items: Map<numb
 			.filter((ch) => ch.page === page && !used.has(ch))
 			.sort((a, b) => (Math.abs(b.y - a.y) > Math.min(a.h, b.h) / 2 ? b.y - a.y : a.x - b.x));
 		if (free.length !== left.length) continue;
+		// Distinct paints have distinct colours; identical chips are icons or decoration.
+		if (new Set(free.map((ch) => ch.hex)).size !== free.length) continue;
 		left.forEach((c, i) => (result.set(c.key, free[i]), used.add(free[i])));
 	}
 	return result;
 }
 
+/** Relative lightness 0–1 (HSL L). */
+export function lightness(hex: string): number {
+	const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+	return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+}
+
 /**
- * Fill colour hexes from PDF chips (both passes, matched by colour key). Colours without a chip
- * keep a model estimate (OpenAI fallback only) or stay empty. Returns how many came from the PDF.
+ * Rejects matches that contradict the colour's name: a "white" that came out dark or a "black"
+ * that came out light means the chip belongs to something else. Two-tone names are not checked.
+ */
+export function plausible(name: string, hex: string): boolean {
+	const n = name.normalize('NFKC').toLowerCase();
+	if (/[/·]|투톤/.test(n)) return true;
+	const l = lightness(hex);
+	if (/화이트|white|흰/.test(n)) return l >= 0.7;
+	if (/블랙|black|검정/.test(n)) return l <= 0.3;
+	return true;
+}
+
+/**
+ * Fill exterior colour hexes from PDF chips (both passes, matched by colour key). Colours without a
+ * chip keep a model estimate (OpenAI fallback only) or stay empty. Returns how many came from the PDF.
+ *
+ * Interior colours are skipped: real price sheets (Hyundai/Kia/Genesis, 2026-11) show interiors as
+ * seat photos and fabric close-ups, whose median colour was wrong more often than right.
  */
 export async function enrichHexes(bytes: ArrayBuffer, extractions: Extraction[], colorPages: number[]): Promise<{ fromPdf: number; chips: number }> {
-	const colors = extractions.flatMap((e) => e.colors);
+	const colors = extractions.flatMap((e) => e.colors).filter((c) => c.kind === 'exterior');
 	if (colors.length === 0) return { fromPdf: 0, chips: 0 };
 	const pages = [...new Set([...colorPages, ...colors.map((c) => c.evidence.page)])].sort((a, b) => a - b);
 	const chips = await findChips(bytes, pages);
@@ -220,6 +278,10 @@ export async function enrichHexes(bytes: ArrayBuffer, extractions: Extraction[],
 		if (!seen.has(key)) seen.set(key, { key, name: c.name, page: c.evidence.page });
 	}
 	const matched = matchChips([...seen.values()], chips, items);
+	for (const t of seen.values()) {
+		const chip = matched.get(t.key);
+		if (chip && !plausible(t.name, chip.hex)) matched.delete(t.key);
+	}
 	for (const c of colors) {
 		const chip = matched.get(itemKey.color(c));
 		if (chip) {

@@ -1,4 +1,4 @@
-import type { ApiError, CatalogDetail, CatalogPage, HealthResponse, SettingsResponse } from '@shared/types'
+import type { ApiError, CatalogDetail, CatalogPage, HealthResponse, NotifyStatus, NotifyTestResult, SettingsResponse } from '@shared/types'
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -26,6 +26,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T
 }
 
+const json = (method: string, data: unknown): RequestInit => ({
+  method,
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(data),
+})
+
 export interface CatalogQuery {
   page: number
   pageSize: number
@@ -46,4 +52,9 @@ export const api = {
   settings: () => request<SettingsResponse>('/settings'),
   catalog: (q: CatalogQuery) => request<CatalogPage>(`/catalog${qs({ page: q.page, pageSize: q.pageSize, brand: q.brand, q: q.q, fresh: q.fresh })}`),
   vehicle: (id: string) => request<CatalogDetail>(`/catalog/${encodeURIComponent(id)}`),
+
+  notify: () => request<NotifyStatus>('/notify'),
+  addNotifyEmail: (email: string) => request<NotifyStatus & { added: boolean }>('/notify', json('POST', { email })),
+  removeNotifyEmail: (id: string) => request<NotifyStatus>(`/notify/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  testNotify: () => request<NotifyTestResult>('/notify/test', { method: 'POST' }),
 }
